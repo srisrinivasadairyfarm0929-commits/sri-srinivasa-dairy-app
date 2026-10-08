@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#2e7d32">
+  <title>Sri Srinivasa Dairy Farm</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="bg-animated"></div>
+
+  <header class="fade-in">
+    <h1>🐄 Sri Srinivasa Dairy Farm</h1>
+    <div>
+      <a href="tel:+919121188763" class="btn-track">📞</a>
+      <a href="track.html" class="btn-track">Track</a>
+      <a href="admin.html" class="btn-track">Admin</a>
+    </div>
+  </header>
+
+  <main>
+    <form id="orderForm" class="glass">
+      <h2>Place Order</h2>
+      <input type="text"  id="name"    placeholder="Your Name" required>
+      <input type="email" id="email"   placeholder="Email" required>
+      <input type="tel"   id="phone"   placeholder="Phone (91XXXXXXXXXX)" required>
+      <input type="text"  id="address" placeholder="Delivery Address" required>
+
+      <div class="items" id="items"></div>
+      <div id="cart" class="cart"></div>
+
+      <div class="coupon-row">
+        <input type="text" id="couponCode" placeholder="Coupon Code">
+        <button type="button" class="add-btn" onclick="applyCoupon()">Apply</button>
+      </div>
+      <div id="couponMsg" style="font-size:13px;margin-top:6px"></div>
+
+      <div class="total">Total: ₹<span id="total">0</span>
+        <span id="discountLine" style="color:#ffd54f;font-size:14px"></span>
+      </div>
+
+      <h3>Payment — UPI</h3>
+
+      <div id="paymentSection" class="payment hidden">
+        <div id="qrcode"></div>
+        <p>UPI: <strong id="upiId">loading...</strong></p>
+        <input type="text" id="utr" placeholder="Enter UTR after payment">
+      </div>
+
+      <button type="submit" class="submit-btn" id="submitBtn">Continue 💳</button>
+    </form>
+
+    <div id="successPopup" class="popup hidden">
+      <div class="popup-content">
+        <div class="checkmark">✓</div>
+        <h2>Order Placed!</h2>
+        <p>Order ID: <strong id="orderId"></strong></p>
+        <p style="font-size:13px;opacity:0.8">We'll contact you shortly</p>
+        <button onclick="closePopup()">OK</button>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>🐄 Sri Srinivasa Dairy Farm</p>
+    <p>📞 <a href="tel:+919121188763">+91 91211 88763</a> ·
+       ✉️ <a href="mailto:srisrinivasadairyfarm0929@gmail.com">srisrinivasadairyfarm0929@gmail.com</a></p>
+    <p style="margin-top:8px">
+      <a href="privacy.html">Privacy</a> ·
+      <a href="terms.html">Terms</a> ·
+      <a href="refund.html">Refunds</a>
+    </p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
+  <script src="script.js"></script>
+</body>
+</html>

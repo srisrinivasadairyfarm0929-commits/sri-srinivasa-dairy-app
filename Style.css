@@ -1,0 +1,78 @@
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+body {
+  min-height: 100vh;
+  background: linear-gradient(-45deg, #0f0c29, #2e7d32, #1b5e20, #0f0c29);
+  background-size: 400% 400%;
+  animation: gradientBG 15s ease infinite;
+  color: #fff;
+  overflow-x: hidden;
+}
+@keyframes gradientBG {
+  0%,100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 20px; flex-wrap: wrap; gap: 10px;
+}
+header h1 { font-size: 20px; }
+.btn-track {
+  padding: 8px 14px; background: rgba(255,255,255,0.15);
+  border-radius: 30px; color: #fff; text-decoration: none;
+  transition: 0.3s; margin: 0 3px; font-size: 13px;
+}
+.btn-track:hover { background: rgba(255,255,255,0.3); }
+.glass {
+  max-width: 500px; margin: 20px auto; padding: 24px;
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 20px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+}
+input, .item, .cart {
+  width: 100%; padding: 14px; margin: 8px 0;
+  border-radius: 12px; border: none;
+  background: rgba(255,255,255,0.1); color: #fff; outline: none;
+}
+input::placeholder { color: rgba(255,255,255,0.5); }
+.item {
+  display: flex; justify-content: space-between; align-items: center;
+  transition: 0.3s; gap: 10px;
+}
+.item:hover { background: rgba(255,255,255,0.18); }
+.prod-img { width: 55px; height: 55px; object-fit: cover; border-radius: 10px; }
+.add-btn {
+  padding: 8px 16px; border: none; border-radius: 20px;
+  background: linear-gradient(135deg, #2e7d32, #66bb6a);
+  color: #fff; cursor: pointer; transition: 0.3s;
+}
+.add-btn:hover { transform: scale(1.1); box-shadow: 0 0 20px #66bb6a; }
+.add-btn[disabled] { opacity: 0.4; cursor: not-allowed; }
+.cart-item { display:flex; justify-content:space-between; padding:6px 0; animation: slideIn 0.3s ease; }
+@keyframes slideIn { from { opacity:0; transform:translateX(-20px);} to { opacity:1; transform:translateX(0);} }
+.total { text-align:right; font-size:18px; font-weight:bold; margin:16px 0; color:#ffd54f; }
+.submit-btn {
+  width:100%; padding:16px; border:none; border-radius:12px;
+  background: linear-gradient(135deg, #2e7d32, #66bb6a);
+  color:#fff; font-size:16px; font-weight:bold; cursor:pointer; transition:0.3s;
+}
+.submit-btn:hover { transform:translateY(-3px); box-shadow:0 10px 30px rgba(102,187,106,0.5); }
+.popup { position:fixed; inset:0; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:100; }
+.popup.hidden, .hidden { display:none; }
+.popup-content { background:rgba(255,255,255,0.1); backdrop-filter:blur(20px); padding:40px; border-radius:24px; text-align:center; animation: popIn 0.5s cubic-bezier(0.68,-0.55,0.27,1.55); }
+@keyframes popIn { 0% { transform:scale(0); opacity:0;} 100% { transform:scale(1); opacity:1;} }
+.checkmark { width:80px; height:80px; border-radius:50%; background:linear-gradient(135deg,#66bb6a,#2e7d32); color:#fff; font-size:50px; line-height:80px; margin:0 auto 20px; animation:pulse 1.5s infinite; }
+@keyframes pulse { 0%,100% { box-shadow:0 0 0 0 rgba(102,187,106,0.7);} 50% { box-shadow:0 0 0 25px rgba(102,187,106,0);} }
+.fade-in { animation: fadeIn 1s ease; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(-20px);} to { opacity:1; transform:translateY(0);} }
+.coupon-row { display:flex; gap:10px; margin-top:12px; }
+.coupon-row input { flex:1; }
+.payment { margin-top:20px; padding:20px; background:rgba(255,255,255,0.06); border-radius:16px; text-align:center; animation:slideIn 0.4s ease; }
+#qrcode { background:#fff; padding:12px; border-radius:12px; display:inline-block; margin-bottom:12px; }
+.timeline { display:flex; justify-content:space-between; margin-top:30px; }
+.step { text-align:center; flex:1; }
+.dot { width:20px; height:20px; border-radius:50%; background:#555; margin:0 auto 10px; transition:0.5s; }
+.step.active .dot { background:#66bb6a; box-shadow:0 0 20px #66bb6a; animation:pulse 1.5s infinite; }
+footer { text-align:center; padding:30px 20px; font-size:13px; opacity:0.8; }
+footer a { color:#66bb6a; text-decoration:none; margin:0 6px; }

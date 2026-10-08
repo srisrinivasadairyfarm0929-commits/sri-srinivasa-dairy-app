@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#2e7d32">
+  <title>Track Order — SSDF</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="bg-animated"></div>
+
+  <header class="fade-in">
+    <h1>📦 Track Order</h1>
+    <a href="index.html" class="btn-track">← Shop</a>
+  </header>
+
+  <main>
+    <div class="glass">
+      <input type="text" id="trackId" placeholder="Enter Order ID (SSDF...)">
+      <button class="submit-btn" onclick="trackOrder()">Track 🔍</button>
+      <div id="result" style="margin-top:20px"></div>
+    </div>
+  </main>
+
+  <footer>
+    <p>🐄 Sri Srinivasa Dairy Farm</p>
+    <p>📞 <a href="tel:+919121188763">+91 91211 88763</a> ·
+       ✉️ <a href="mailto:srisrinivasadairyfarm0929@gmail.com">srisrinivasadairyfarm0929@gmail.com</a></p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="track.js"></script>
+</body>
+</html>

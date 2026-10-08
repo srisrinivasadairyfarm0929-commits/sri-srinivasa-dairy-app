@@ -1,0 +1,12 @@
+{
+  "appId": "com.srisrinivasadairyfarm.app",
+  "appName": "Sri Srinivasa Dairy Farm",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}
