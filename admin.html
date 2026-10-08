@@ -6,22 +6,38 @@
   <title>Admin — SSDF</title>
   <link rel="stylesheet" href="style.css">
   <style>
-    table { width:100%; border-collapse:collapse; color:#fff; margin-top:16px; font-size:13px; }
+    table { width:100%; border-collapse:collapse; color:#fff; margin-top:16px; font-size:12px; }
     th,td { padding:8px; border-bottom:1px solid rgba(255,255,255,.1); text-align:left; }
     th { background:rgba(255,255,255,.08); }
-    input,select { padding:6px; border-radius:6px; border:none; background:#222; color:#fff; }
-    .tabs { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
-    .tab { padding:10px 16px; background:rgba(255,255,255,.1); border-radius:10px; cursor:pointer; font-size:13px; }
+    input,select { padding:6px; border-radius:6px; border:none; background:#222; color:#fff; font-size:12px; }
+    .tabs { display:flex; gap:6px; margin-bottom:20px; flex-wrap:wrap; }
+    .tab { padding:9px 14px; background:rgba(255,255,255,.1); border-radius:10px; cursor:pointer; font-size:12px; transition:0.3s; }
     .tab.active { background:linear-gradient(135deg,#2e7d32,#66bb6a); }
-    .stats { display:flex; gap:12px; margin-top:20px; flex-wrap:wrap; }
-    .stat { flex:1; min-width:120px; background:rgba(255,255,255,.08); padding:16px; border-radius:16px; text-align:center; }
-    .stat h3 { font-size:24px; color:#ffd54f; }
-    .chart { display:flex; align-items:flex-end; gap:10px; height:180px; margin-top:20px; padding:20px; background:rgba(255,255,255,.05); border-radius:16px; }
+    .stats { display:flex; gap:10px; margin-top:20px; flex-wrap:wrap; }
+    .stat { flex:1; min-width:100px; background:rgba(255,255,255,.08); padding:14px; border-radius:14px; text-align:center; }
+    .stat h3 { font-size:22px; color:#ffd54f; }
+    .stat p { font-size:11px; opacity:0.7; }
+    .chart { display:flex; align-items:flex-end; gap:8px; height:160px; margin-top:20px; padding:16px; background:rgba(255,255,255,.05); border-radius:16px; }
     .bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; }
     .bar { width:100%; background:linear-gradient(180deg,#66bb6a,#2e7d32); border-radius:8px 8px 0 0; min-height:4px; }
-    .bar-wrap span { font-size:11px; margin-top:6px; }
+    .bar-wrap span { font-size:10px; margin-top:4px; }
     .glass { max-width:1100px; }
     .hidden { display:none; }
+    .slot-header {
+      background:rgba(102,187,106,0.2);
+      padding:10px; border-radius:10px;
+      margin:16px 0 8px 0;
+      font-weight:bold;
+      font-size:14px;
+    }
+    .delivery-card {
+      background:rgba(255,255,255,0.06);
+      padding:12px; border-radius:10px;
+      margin:6px 0;
+      font-size:13px;
+    }
+    .delivery-card .row { display:flex; justify-content:space-between; padding:3px 0; }
+    .delivery-card .items { font-size:12px; opacity:0.8; margin-top:6px; }
   </style>
 </head>
 <body>
@@ -42,6 +58,7 @@
     <div id="panel" class="glass hidden">
       <div class="tabs">
         <div class="tab active" onclick="tab('orders',this)">📦 Orders</div>
+        <div class="tab" onclick="tab('delivery',this)">🚚 Delivery</div>
         <div class="tab" onclick="tab('products',this)">🛒 Products</div>
         <div class="tab" onclick="tab('coupons',this)">🎟️ Coupons</div>
         <div class="tab" onclick="tab('analytics',this)">📊 Analytics</div>
@@ -50,6 +67,11 @@
       <div id="orders">
         <button class="submit-btn" onclick="loadOrders()" style="max-width:160px">🔄 Refresh</button>
         <div style="overflow-x:auto"><table id="ordersTable"></table></div>
+      </div>
+
+      <div id="delivery" class="hidden">
+        <button class="submit-btn" onclick="loadDelivery()" style="max-width:180px">🔄 Refresh Today</button>
+        <div id="deliveryList" style="margin-top:16px"></div>
       </div>
 
       <div id="products" class="hidden">
@@ -88,9 +110,10 @@
     function tab(name, el) {
       document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
       el.classList.add('active');
-      ['orders','products','coupons','analytics'].forEach(t => document.getElementById(t).classList.add('hidden'));
+      ['orders','delivery','products','coupons','analytics'].forEach(t => document.getElementById(t).classList.add('hidden'));
       document.getElementById(name).classList.remove('hidden');
       if (name === 'orders') loadOrders();
+      if (name === 'delivery') loadDelivery();
       if (name === 'products') loadProducts();
       if (name === 'coupons') loadCoupons();
       if (name === 'analytics') loadAnalytics();
