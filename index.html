@@ -10,6 +10,7 @@
 <body>
   <div class="bg-animated"></div>
 
+  <!-- SPLASH -->
   <div id="splash">
     <img src="logo.png" alt="SSDF" class="splash-logo" onerror="this.style.display='none'">
     <h1 class="splash-title">Sri Srinivasa Dairy Farm</h1>
@@ -17,7 +18,10 @@
     <div class="splash-loader"></div>
   </div>
 
+  <!-- MAIN APP -->
   <div id="mainApp" class="hidden">
+
+    <!-- DRAWER -->
     <aside id="drawer" class="drawer">
       <div class="drawer-header">
         <img src="logo.png" alt="SSDF" class="drawer-logo" onerror="this.style.display='none'">
@@ -38,6 +42,7 @@
     </aside>
     <div id="overlay" class="overlay" onclick="toggleDrawer()"></div>
 
+    <!-- HEADER -->
     <header class="fade-in">
       <div style="display:flex; align-items:center; gap:12px">
         <button class="menu-btn" onclick="toggleDrawer()">☰</button>
@@ -93,17 +98,28 @@
         <button type="submit" class="submit-btn" id="submitBtn">Continue 💳</button>
       </form>
 
+      <!-- SUCCESS POPUP (2 MIN) -->
       <div id="successPopup" class="popup hidden">
-        <div class="popup-content">
+        <div class="popup-content" style="max-width:360px;width:90%">
           <div class="checkmark">✓</div>
-          <h2>Order Placed!</h2>
-          <p>Order ID: <strong id="orderId"></strong></p>
+          <h2>Order Received!</h2>
+          <p style="margin-top:10px">Order ID: <strong id="orderId"></strong></p>
           <p style="color:#ffd54f;font-weight:bold;margin-top:10px">⏳ Pending Verification</p>
-          <p style="font-size:13px;opacity:0.8">We'll confirm within 30 minutes</p>
-          <button onclick="closePopup()">OK</button>
+          <p style="font-size:13px;opacity:0.85;margin-top:8px">We'll verify payment and confirm within 30 minutes</p>
+
+          <div style="background:rgba(255,213,79,0.15);border-left:4px solid #ffd54f;padding:12px;border-radius:10px;margin-top:16px;text-align:left;font-size:13px">
+            <b>📌 What's next?</b><br>
+            1. We check your UTR payment<br>
+            2. Order confirmed<br>
+            3. Milk delivered at your slot<br>
+            <span style="font-size:11px;opacity:0.7">Auto-closes in <b id="countdown">120</b> sec</span>
+          </div>
+
+          <button onclick="closePopup()" style="margin-top:16px">Close</button>
         </div>
       </div>
 
+      <!-- BILL MODAL -->
       <div id="billModal" class="popup hidden">
         <div class="popup-content" style="max-width:380px;width:90%;max-height:80vh;overflow-y:auto">
           <h2 style="margin-bottom:14px">📋 My Monthly Bill</h2>
@@ -131,4 +147,4 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
   <script src="script.js"></script>
 </body>
-    </html>
+</html>
