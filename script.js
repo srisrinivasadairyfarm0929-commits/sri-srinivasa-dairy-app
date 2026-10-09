@@ -1,10 +1,10 @@
 const SUPABASE_URL = 'https://qyrulqxbjoylohxgwywo.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5cnVscXhiam95bG9oeGd3eXdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0NzE4NDgsImV4cCI6MjEwNzA0Nzg0OH0.UFGFHyMN0yEen9hPvC0Xl9UqZCRrmcP5RIqpAA_my38wIjoyMTA3MDQ3ODQ4fQ.o6pVGl67ncA5URZV1MOOsjP5rZtJ6Ni1KZ0S3fA2x8Q';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5cnVscXhiam95bG9oeGd3eXdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0NzE4NDgsImV4cCI6MjEwNzA0Nzg0OH0.UFGFHyMN0yEen9hPvC0Xl9UqZCRrmcP5RIqpAA_my38';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let cart = [], upiId = '', step = 1;
 let discount = 0, appliedCoupon = null;
-let natureAudio = null, gameLoop = null;
+let natureAudio = null;
 
 /* ══════ SOUNDS ══════ */
 const sounds = {
@@ -34,7 +34,7 @@ function playNatureSound() {
   }, 20000);
 }
 
-/* ══════ BOOT — always shows main app ══════ */
+/* ══════ BOOT ══════ */
 window.addEventListener('load', () => {
   playNatureSound();
 
@@ -329,125 +329,3 @@ document.addEventListener('click', (e) => {
   btn.appendChild(ripple);
   setTimeout(() => ripple.remove(), 600);
 });
-
-/* ══════ SNAKE GAME — kept for future use ══════ */
-const GRID = 16, CELL = 20;
-let snake, direction, food, score, best, canvas, ctx, gameSpeed;
-
-function startGame() {
-  canvas = document.getElementById('gameCanvas');
-  if (!canvas) return;
-  canvas.width = 320; canvas.height = 320;
-  ctx = canvas.getContext('2d');
-  best = Number(localStorage.getItem('snakeBest') || 0);
-  const bestEl = document.getElementById('best');
-  if (bestEl) bestEl.textContent = best;
-  resetGame();
-  if (gameLoop) clearInterval(gameLoop);
-  gameLoop = setInterval(gameTick, gameSpeed);
-
-  let tsx = 0, tsy = 0;
-  canvas.addEventListener('touchstart', e => { tsx = e.touches[0].clientX; tsy = e.touches[0].clientY; });
-  canvas.addEventListener('touchend', e => {
-    const dx = e.changedTouches[0].clientX - tsx;
-    const dy = e.changedTouches[0].clientY - tsy;
-    if (Math.abs(dx) > Math.abs(dy)) {
-      if (dx > 30) setDir('right'); else if (dx < -30) setDir('left');
-    } else {
-      if (dy > 30) setDir('down'); else if (dy < -30) setDir('up');
-    }
-  }, { passive: true });
-
-  document.querySelectorAll('.dpad').forEach(btn => { btn.onclick = () => setDir(btn.dataset.dir); });
-  drawGame();
-}
-
-function resetGame() {
-  snake = [{x:8,y:8},{x:7,y:8},{x:6,y:8}];
-  direction = { x: 1, y: 0 };
-  score = 0; gameSpeed = 150;
-  placeFood();
-  const scoreEl = document.getElementById('score');
-  if (scoreEl) scoreEl.textContent = 0;
-}
-function placeFood() {
-  let ok = false, tries = 0;
-  while (!ok && tries < 100) {
-    food = { x: Math.floor(Math.random()*GRID), y: Math.floor(Math.random()*GRID) };
-    ok = !snake.some(s => s.x === food.x && s.y === food.y);
-    tries++;
-  }
-}
-function setDir(d) {
-  if (!snake) return;
-  if (d === 'up'    && direction.y === 0) direction = { x: 0, y: -1 };
-  if (d === 'down'  && direction.y === 0) direction = { x: 0, y: 1 };
-  if (d === 'left'  && direction.x === 0) direction = { x: -1, y: 0 };
-  if (d === 'right' && direction.x === 0) direction = { x: 1, y: 0 };
-}
-function gameTick() {
-  if (!snake) return;
-  const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
-  if (head.x < 0 || head.x >= GRID || head.y < 0 || head.y >= GRID) { gameOver(); return; }
-  if (snake.some(s => s.x === head.x && s.y === head.y)) { gameOver(); return; }
-  snake.unshift(head);
-  if (head.x === food.x && head.y === food.y) {
-    score++;
-    const scoreEl = document.getElementById('score');
-    if (scoreEl) scoreEl.textContent = score;
-    placeFood();
-    if (score % 5 === 0 && gameSpeed > 70) {
-      gameSpeed -= 10;
-      clearInterval(gameLoop);
-      gameLoop = setInterval(gameTick, gameSpeed);
-    }
-  } else snake.pop();
-  drawGame();
-}
-function drawGame() {
-  if (!ctx) return;
-  ctx.fillStyle = 'rgba(0,0,0,0.4)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.strokeStyle = 'rgba(102,187,106,0.15)';
-  for (let i = 0; i < GRID; i++) {
-    ctx.beginPath(); ctx.moveTo(i*CELL,0); ctx.lineTo(i*CELL,canvas.height); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0,i*CELL); ctx.lineTo(canvas.width,i*CELL); ctx.stroke();
-  }
-  ctx.fillStyle = '#ffd54f';
-  ctx.beginPath();
-  ctx.arc(food.x*CELL+CELL/2, food.y*CELL+CELL/2, CELL/2-2, 0, Math.PI*2);
-  ctx.fill();
-  snake.forEach((s, i) => {
-    ctx.fillStyle = i === 0 ? '#66bb6a' : '#2e7d32';
-    ctx.fillRect(s.x*CELL+1, s.y*CELL+1, CELL-2, CELL-2);
-  });
-}
-function gameOver() {
-  clearInterval(gameLoop); gameLoop = null;
-  if (score > best) {
-    best = score;
-    localStorage.setItem('snakeBest', best);
-    const bestEl = document.getElementById('best');
-    if (bestEl) bestEl.textContent = best;
-  }
-  ctx.fillStyle = 'rgba(0,0,0,0.8)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#ffd54f';
-  ctx.font = 'bold 24px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('Game Over!', canvas.width/2, canvas.height/2 - 10);
-  ctx.fillStyle = '#fff';
-  ctx.font = '16px sans-serif';
-  ctx.fillText('Score: ' + score, canvas.width/2, canvas.height/2 + 20);
-  ctx.fillText('Tap to play again', canvas.width/2, canvas.height/2 + 50);
-  canvas.addEventListener('click', restartGame, { once: true });
-  canvas.addEventListener('touchstart', restartGame, { once: true });
-}
-function restartGame() {
-  resetGame();
-  if (gameLoop) clearInterval(gameLoop);
-  gameLoop = setInterval(gameTick, gameSpeed);
-}
-function stopGame() {
-  if (gameLoop) { clearInterval(gameLoop); gameLoop = null; }
-          }
