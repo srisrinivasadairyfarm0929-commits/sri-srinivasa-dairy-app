@@ -23,86 +23,119 @@
     .bar-wrap span { font-size:10px; margin-top:4px; }
     .glass { max-width:1100px; }
     .hidden { display:none; }
-    .slot-header {
-      background:rgba(102,187,106,0.2);
-      padding:10px; border-radius:10px;
-      margin:16px 0 8px 0;
-      font-weight:bold;
-      font-size:14px;
-    }
-    .delivery-card {
-      background:rgba(255,255,255,0.06);
-      padding:12px; border-radius:10px;
-      margin:6px 0;
-      font-size:13px;
-    }
+    .slot-header { background:rgba(102,187,106,0.2); padding:10px; border-radius:10px; margin:16px 0 8px 0; font-weight:bold; font-size:14px; }
+    .delivery-card { background:rgba(255,255,255,0.06); padding:12px; border-radius:10px; margin:6px 0; font-size:13px; }
     .delivery-card .row { display:flex; justify-content:space-between; padding:3px 0; }
     .delivery-card .items { font-size:12px; opacity:0.8; margin-top:6px; }
+
+    #accessDenied {
+      display:none;
+      position:fixed; inset:0;
+      background:linear-gradient(135deg, #0f0c29, #1b5e20);
+      color:#fff;
+      align-items:center; justify-content:center;
+      text-align:center;
+      padding:30px;
+      z-index:10000;
+    }
+    #accessDenied.show { display:flex; }
+    #accessDenied h1 { font-size:80px; margin-bottom:20px; }
+    #accessDenied h2 { font-size:26px; margin-bottom:12px; }
+    #accessDenied p { opacity:0.7; line-height:1.6; }
+
+    #loadingScreen {
+      position:fixed; inset:0;
+      background:linear-gradient(135deg, #1b5e20, #2e7d32);
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      color:#fff;
+      z-index:9999;
+    }
+    #loadingScreen .spinner {
+      width:60px; height:60px;
+      border:4px solid rgba(255,255,255,0.2);
+      border-top-color:#ffd54f;
+      border-radius:50%;
+      animation: spin 0.9s linear infinite;
+      margin-bottom:20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loadingScreen.hide { display:none; }
   </style>
 </head>
 <body>
   <div class="bg-animated"></div>
 
-  <header class="fade-in">
-    <h1>⚙️ Admin — SSDF</h1>
-    <a href="index.html" class="btn-track">← Shop</a>
-  </header>
+  <div id="loadingScreen">
+    <div class="spinner"></div>
+    <p style="font-size:14px;opacity:0.85">Verifying device access...</p>
+  </div>
 
-  <main>
-    <div id="loginBox" class="glass">
-      <h2>Login</h2>
-      <input type="password" id="pwd" placeholder="Password">
-      <button class="submit-btn" onclick="login()">Enter</button>
+  <div id="accessDenied">
+    <div>
+      <h1>🔒</h1>
+      <h2>Access Denied</h2>
+      <p>This admin panel is restricted to the owner's device.</p>
+      <p style="font-size:12px;opacity:0.5;margin-top:30px">🐄 Sri Srinivasa Dairy Farm</p>
     </div>
+  </div>
 
-    <div id="panel" class="glass hidden">
-      <div class="tabs">
-        <div class="tab active" onclick="tab('orders',this)">📦 Orders</div>
-        <div class="tab" onclick="tab('delivery',this)">🚚 Delivery</div>
-        <div class="tab" onclick="tab('products',this)">🛒 Products</div>
-        <div class="tab" onclick="tab('coupons',this)">🎟️ Coupons</div>
-        <div class="tab" onclick="tab('analytics',this)">📊 Analytics</div>
+  <div id="mainContent" style="display:none">
+    <header class="fade-in" style="display:flex;justify-content:space-between;align-items:center">
+      <h1>⚙️ Admin — SSDF</h1>
+      <div>
+        <span style="font-size:11px;opacity:0.6;margin-right:8px" id="deviceLabel"></span>
+        <a href="index.html" class="btn-track">← Shop</a>
       </div>
+    </header>
 
-      <div id="orders">
-        <button class="submit-btn" onclick="loadOrders()" style="max-width:160px">🔄 Refresh</button>
-        <div style="overflow-x:auto"><table id="ordersTable"></table></div>
-      </div>
+    <main>
+      <div id="panel" class="glass">
+        <div class="tabs">
+          <div class="tab active" onclick="tab('orders',this)">📦 Orders</div>
+          <div class="tab" onclick="tab('delivery',this)">🚚 Delivery</div>
+          <div class="tab" onclick="tab('products',this)">🛒 Products</div>
+          <div class="tab" onclick="tab('coupons',this)">🎟️ Coupons</div>
+          <div class="tab" onclick="tab('analytics',this)">📊 Analytics</div>
+        </div>
 
-      <div id="delivery" class="hidden">
-        <button class="submit-btn" onclick="loadDelivery()" style="max-width:180px">🔄 Refresh Today</button>
-        <div id="deliveryList" style="margin-top:16px"></div>
-      </div>
+        <div id="orders">
+          <button class="submit-btn" onclick="loadOrders()" style="max-width:160px">🔄 Refresh</button>
+          <div style="overflow-x:auto"><table id="ordersTable"></table></div>
+        </div>
 
-      <div id="products" class="hidden">
-        <h3>Add Product</h3>
-        <input id="pName" placeholder="Name">
-        <input id="pPrice" type="number" placeholder="Price">
-        <input id="pStock" type="number" placeholder="Stock" value="100">
-        <button class="submit-btn" onclick="addProduct()" style="max-width:160px">+ Add</button>
-        <table id="productsTable"></table>
-      </div>
+        <div id="delivery" class="hidden">
+          <button class="submit-btn" onclick="loadDelivery()" style="max-width:180px">🔄 Refresh Today</button>
+          <div id="deliveryList" style="margin-top:16px"></div>
+        </div>
 
-      <div id="coupons" class="hidden">
-        <h3>Add Coupon</h3>
-        <input id="cCode" placeholder="CODE">
-        <select id="cType">
-          <option value="percent">%</option>
-          <option value="flat">₹</option>
-        </select>
-        <input id="cValue" type="number" placeholder="Value">
-        <input id="cMin" type="number" placeholder="Min order" value="0">
-        <input id="cLimit" type="number" placeholder="Limit" value="100">
-        <button class="submit-btn" onclick="addCoupon()" style="max-width:160px">+ Add</button>
-        <table id="couponsTable"></table>
-      </div>
+        <div id="products" class="hidden">
+          <h3>Add Product</h3>
+          <input id="pName" placeholder="Name">
+          <input id="pPrice" type="number" placeholder="Price">
+          <input id="pStock" type="number" placeholder="Stock" value="100">
+          <button class="submit-btn" onclick="addProduct()" style="max-width:160px">+ Add</button>
+          <table id="productsTable"></table>
+        </div>
 
-      <div id="analytics" class="hidden">
-        <div class="stats" id="stats"></div>
-        <div class="chart" id="chart"></div>
+        <div id="coupons" class="hidden">
+          <h3>Add Coupon</h3>
+          <input id="cCode" placeholder="CODE">
+          <select id="cType"><option value="percent">%</option><option value="flat">₹</option></select>
+          <input id="cValue" type="number" placeholder="Value">
+          <input id="cMin" type="number" placeholder="Min order" value="0">
+          <input id="cLimit" type="number" placeholder="Limit" value="100">
+          <button class="submit-btn" onclick="addCoupon()" style="max-width:160px">+ Add</button>
+          <table id="couponsTable"></table>
+        </div>
+
+        <div id="analytics" class="hidden">
+          <div class="stats" id="stats"></div>
+          <div class="chart" id="chart"></div>
+        </div>
       </div>
-    </div>
-  </main>
+    </main>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="admin.js"></script>
