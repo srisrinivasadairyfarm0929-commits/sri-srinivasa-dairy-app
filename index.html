@@ -1,153 +1,18 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#2e7d32">
-  <title>Sri Srinivasa Dairy Farm</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <div class="bg-animated"></div>
-
-  <div id="splash">
-    <img src="logo.png" alt="SSDF" class="splash-logo" onerror="this.style.display='none'">
-    <h1 class="splash-title">Sri Srinivasa Dairy Farm</h1>
-    <p class="splash-sub">Pure Milk • Healthy Life</p>
-    <div class="splash-loader"></div>
+<div id="offlineScreen" class="hidden">
+  <div class="offline-header">
+    <h2>📡 No Internet</h2>
+    <p>Play while we reconnect...</p>
   </div>
-
-  <div id="offlineScreen" class="hidden">
-    <div class="offline-header">
-      <h2>📡 No Internet</h2>
-      <p>Play while we reconnect...</p>
+  <canvas id="gameCanvas" width="320" height="320"></canvas>
+  <div class="game-score">Score: <span id="score">0</span> · Best: <span id="best">0</span></div>
+  <div class="game-controls">
+    <button class="dpad up" data-dir="up">▲</button>
+    <div>
+      <button class="dpad left" data-dir="left">◀</button>
+      <button class="dpad down" data-dir="down">▼</button>
+      <button class="dpad right" data-dir="right">▶</button>
     </div>
-    <canvas id="gameCanvas" width="320" height="320"></canvas>
-    <div class="game-score">Score: <span id="score">0</span> · Best: <span id="best">0</span></div>
-    <div class="game-controls">
-      <button class="dpad up" data-dir="up">▲</button>
-      <div>
-        <button class="dpad left" data-dir="left">◀</button>
-        <button class="dpad down" data-dir="down">▼</button>
-        <button class="dpad right" data-dir="right">▶</button>
-      </div>
-    </div>
-    <p style="font-size:12px;opacity:0.7;text-align:center;margin-top:10px">Swipe or tap arrows 🐍</p>
-    <button class="retry-btn" onclick="location.reload()">🔄 Retry Connection</button>
   </div>
-
-  <div id="mainApp" class="hidden">
-    <aside id="drawer" class="drawer">
-      <div class="drawer-header">
-        <img src="logo.png" alt="SSDF" class="drawer-logo" onerror="this.style.display='none'">
-        <h3>Sri Srinivasa Dairy Farm</h3>
-        <p style="font-size:12px;opacity:0.7">Pure Milk • Healthy Life</p>
-      </div>
-      <nav class="drawer-menu">
-        <a href="index.html" class="drawer-item">🏠 Home</a>
-        <a href="track.html" class="drawer-item">📦 Track Order</a>
-        <a href="contact.html" class="drawer-item">📞 Contact Us</a>
-        <a href="#" onclick="openWhatsApp(); return false;" class="drawer-item">💬 WhatsApp Order</a>
-        <a href="#" onclick="openInstagram(); return false;" class="drawer-item">📸 Instagram</a>
-        <a href="admin.html" class="drawer-item">⚙️ Admin</a>
-      </nav>
-      <div class="drawer-footer">
-        <p style="font-size:11px;opacity:0.6">📞 +91 91211 88763</p>
-      </div>
-    </aside>
-    <div id="overlay" class="overlay" onclick="toggleDrawer()"></div>
-
-    <header class="fade-in">
-      <div style="display:flex; align-items:center; gap:12px">
-        <button class="menu-btn" onclick="toggleDrawer()">☰</button>
-        <img src="logo.png" alt="SSDF" class="header-logo" onerror="this.style.display='none'">
-        <h1>Sri Srinivasa Dairy Farm</h1>
-      </div>
-      <div><a href="track.html" class="btn-track">Track</a></div>
-    </header>
-
-    <main>
-      <form id="orderForm" class="glass">
-        <h2>Place Order</h2>
-        <input type="text"  id="name"    placeholder="Your Name" required>
-        <input type="email" id="email"   placeholder="Email" required>
-        <input type="tel"   id="phone"   placeholder="Phone (91XXXXXXXXXX)" required>
-        <input type="text"  id="address" placeholder="Delivery Address" required>
-
-        <div class="slot-picker">
-          <p style="font-size:14px;margin-bottom:6px">Delivery Slot</p>
-          <label class="slot-option"><input type="radio" name="slot" value="Morning (6-8 AM)" checked><span>🌅 Morning (6-8 AM)</span></label>
-          <label class="slot-option"><input type="radio" name="slot" value="Evening (5-7 PM)"><span>🌆 Evening (5-7 PM)</span></label>
-        </div>
-
-        <div style="display:flex; gap:10px; margin:12px 0">
-          <button type="button" class="quick-btn" onclick="repeatLastOrder()">🔁 Repeat Last Order</button>
-          <button type="button" class="quick-btn" onclick="showMonthlyBill()">📋 My Monthly Bill</button>
-        </div>
-
-        <div class="items" id="items"></div>
-        <div id="cart" class="cart"></div>
-
-        <div class="coupon-row">
-          <input type="text" id="couponCode" placeholder="Coupon Code">
-          <button type="button" class="add-btn" onclick="applyCoupon()">Apply</button>
-        </div>
-        <div id="couponMsg" style="font-size:13px;margin-top:6px"></div>
-
-        <div class="total">Total: ₹<span id="total">0</span>
-          <span id="discountLine" style="color:#ffd54f;font-size:14px"></span>
-        </div>
-
-        <h3>Payment — UPI</h3>
-        <div id="paymentSection" class="payment hidden">
-          <p style="margin-bottom:12px">Pay ₹<strong id="payAmount">0</strong></p>
-          <a id="upiPayBtn" class="upi-btn" href="#">💳 Pay Now via UPI App</a>
-          <p style="font-size:12px;opacity:0.7;margin:10px 0">OR scan QR below</p>
-          <div id="qrcode"></div>
-          <p>UPI: <strong id="upiId">loading...</strong></p>
-          <input type="text" id="utr" placeholder="Enter UTR / Transaction ID">
-          <p style="font-size:11px;opacity:0.6;margin-top:6px">Open UPI app → history → copy UTR number</p>
-        </div>
-
-        <button type="submit" class="submit-btn" id="submitBtn">Continue 💳</button>
-      </form>
-
-      <div id="successPopup" class="popup hidden">
-        <div class="popup-content">
-          <div class="checkmark">✓</div>
-          <h2>Order Placed!</h2>
-          <p>Order ID: <strong id="orderId"></strong></p>
-          <p style="color:#ffd54f;font-weight:bold;margin-top:10px">⏳ Pending Verification</p>
-          <p style="font-size:13px;opacity:0.8">We'll confirm within 30 minutes</p>
-          <button onclick="closePopup()">OK</button>
-        </div>
-      </div>
-
-      <div id="billModal" class="popup hidden">
-        <div class="popup-content" style="max-width:380px;width:90%;max-height:80vh;overflow-y:auto">
-          <h2 style="margin-bottom:14px">📋 My Monthly Bill</h2>
-          <div id="billContent" style="text-align:left;font-size:13px"></div>
-          <button onclick="closeBill()" style="margin-top:16px">Close</button>
-        </div>
-      </div>
-    </main>
-
-    <footer>
-      <p>🐄 Sri Srinivasa Dairy Farm</p>
-      <p>📞 <a href="tel:+919121188763">+91 91211 88763</a> ·
-         ✉️ <a href="mailto:srisrinivasadairyfarm0929@gmail.com">srisrinivasadairyfarm0929@gmail.com</a></p>
-      <p style="margin-top:8px">
-        <a href="contact.html">Contact</a> ·
-        <a href="privacy.html">Privacy</a> ·
-        <a href="terms.html">Terms</a> ·
-        <a href="refund.html">Refunds</a>
-      </p>
-    </footer>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
-  <script src="script.js"></script>
-</body>
-</html>
+  <p style="font-size:12px;opacity:0.7;text-align:center;margin-top:10px">Swipe or tap arrows 🐍</p>
+  <button class="retry-btn" onclick="location.reload()">🔄 Retry Connection</button>
+</div>
