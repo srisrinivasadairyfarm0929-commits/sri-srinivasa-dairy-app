@@ -2,58 +2,96 @@ const SUPABASE_URL = 'https://qyrulqxbjoylohxgwywo.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5cnVscXhiam95bG9oeGd3eXdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0NzE4NDgsImV4cCI6MjEwNzA0Nzg0OH0.UFGFHyMN0yEen9hPvC0Xl9UqZCRrmcP5RIqpAA_my38';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-/* ══════ BUZZER WATCHER ══════ */
+/* ══════ DEVICE LOCK ══════ */
+const DEVICE_KEY_STORAGE = 'ssdf_device_lock_v2';
+const OWNER_DEVICE_KEY = 'SSDF-OWNER-2026-1629-AMMANANNA@143-PRIVATE';
+
+/* Generate stable device fingerprint */
+async function getDeviceFingerprint() {
+  const parts = [
+    navigator.userAgent,
+    navigator.language,
+    screen.width + 'x' + screen.height,
+    screen.colorDepth,
+    new Date().getTimezoneOffset(),
+    navigator.hardwareConcurrency || 'na',
+    navigator.platform || 'na',
+    navigator.deviceMemory || 'na',
+    navigator.maxTouchPoints || 0
+  ];
+  const raw = parts.join('|');
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+  return [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0')).join('').slice(0, 24);
+}
+
+/* Verify this device is the owner's */
+async function verifyDevice() {
+  const urlParams = new URLSearchParams(location.search);
+  const regKey = urlParams.get('register');
+
+  // Register this device if URL has correct secret
+  if (regKey === OWNER_DEVICE_KEY) {
+    const fp = await getDeviceFingerprint();
+    localStorage.setItem(DEVICE_KEY_STORAGE, fp);
+    history.replaceState({}, '', 'admin.html');
+    return { ok: true, fingerprint: fp };
+  }
+
+  const saved = localStorage.getItem(DEVICE_KEY_STORAGE);
+  const current = await getDeviceFingerprint();
+
+  if (!saved) return { ok: false, reason: 'no_device' };
+  if (saved !== current) return { ok: false, reason: 'wrong_device' };
+  return { ok: true, fingerprint: current };
+}
+
+function showAccessDenied(reason) {
+  document.getElementById('loadingScreen').classList.add('hide');
+  const el = document.getElementById('accessDenied');
+  el.classList.add('show');
+  if (reason === 'no_device') {
+    el.innerHTML = `
+      <div>
+        <h1>🔒</h1>
+        <h2>Not Registered</h2>
+        <p>This device is not registered as the owner's phone.</p>
+        <p style="font-size:12px;opacity:0.5;margin-top:30px">🐄 Sri Srinivasa Dairy Farm</p>
+      </div>`;
+  }
+}
+
+/* ══════ BUZZER SETUP ══════ */
+const CUSTOM_BUZZER = 'buzzer.mp3';
+const FALLBACK_BUZZER = 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3?filename=error-126627.mp3';
+
 let lastOrderCount = 0;
 let watcherInterval = null;
 
-function startOrderWatcher() {
-  if (watcherInterval) clearInterval(watcherInterval);
-
-  // Initial count
-  (async () => {
-    try {
-      const { count } = await db.from('orders').select('*', { count: 'exact', head: true });
-      lastOrderCount = count || 0;
-    } catch (e) {}
-  })();
-
-  watcherInterval = setInterval(async () => {
-    try {
-      const { count } = await db.from('orders').select('*', { count: 'exact', head: true });
-      if (typeof count !== 'number') return;
-
-      if (count > lastOrderCount) {
-        triggerBuzzer();
-        lastOrderCount = count;
-      }
-    } catch (e) { console.warn('Watcher:', e); }
-  }, 10000);
+function playBuzzerOnce(volume = 1.0) {
+  try {
+    const audio = new Audio(CUSTOM_BUZZER);
+    audio.volume = volume;
+    audio.play().catch(() => {
+      try {
+        const fb = new Audio(FALLBACK_BUZZER);
+        fb.volume = volume;
+        fb.play().catch(() => {});
+      } catch (e) {}
+    });
+  } catch (e) {}
 }
 
 function triggerBuzzer() {
-  // Play buzzer 5 times loudly
-  for (let i = 0; i < 5; i++) {
-    setTimeout(() => {
-      try {
-        const audio = new Audio('https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3?filename=error-126627.mp3');
-        audio.volume = 1.0;
-        audio.play().catch(()=>{});
-      } catch (e) {}
-    }, i * 500);
-  }
-
-  // Vibration
-  if (navigator.vibrate) {
-    try { navigator.vibrate([500, 200, 500, 200, 500]); } catch (e) {}
-  }
-
+  playBuzzerOnce(1.0);
+  setTimeout(() => playBuzzerOnce(1.0), 900);
+  setTimeout(() => playBuzzerOnce(1.0), 1800);
+  if (navigator.vibrate) { try { navigator.vibrate([500, 200, 500, 200, 500]); } catch (e) {} }
   showNewOrderBanner();
 }
 
 function showNewOrderBanner() {
   const existing = document.getElementById('newOrderBanner');
   if (existing) existing.remove();
-
   const banner = document.createElement('div');
   banner.id = 'newOrderBanner';
   banner.style.cssText = `
@@ -63,44 +101,98 @@ function showNewOrderBanner() {
     text-align:center; font-weight:bold;
     font-size:16px; z-index:99999;
     box-shadow:0 4px 20px rgba(0,0,0,0.5);
-    animation: slideDown 0.4s ease;
     cursor:pointer;
   `;
   banner.innerHTML = '🔔 NEW ORDER RECEIVED! Tap to view';
-  banner.onclick = () => {
-    loadOrders();
-    banner.remove();
-  };
+  banner.onclick = () => { loadOrders(); banner.remove(); };
   document.body.appendChild(banner);
-
   setTimeout(() => { if (banner.parentNode) banner.remove(); }, 30000);
 }
 
-// Add animation style once
-if (!document.getElementById('buzzerStyle')) {
-  const s = document.createElement('style');
-  s.id = 'buzzerStyle';
-  s.textContent = `@keyframes slideDown {
-    from { transform: translateY(-100%); }
-    to { transform: translateY(0); }
-  }`;
-  document.head.appendChild(s);
+function startOrderWatcher() {
+  if (watcherInterval) clearInterval(watcherInterval);
+  (async () => {
+    try {
+      const { count } = await db.from('orders').select('*', { count: 'exact', head: true });
+      lastOrderCount = count || 0;
+    } catch (e) {}
+  })();
+  watcherInterval = setInterval(async () => {
+    try {
+      const { count } = await db.from('orders').select('*', { count: 'exact', head: true });
+      if (typeof count !== 'number') return;
+      if (count > lastOrderCount) { triggerBuzzer(); lastOrderCount = count; }
+    } catch (e) {}
+  }, 8000);
 }
 
-/* ══════ LOGIN ══════ */
-async function login() {
-  const pwd = document.getElementById('pwd').value;
-  const { data, error } = await db.from('settings').select('value').eq('key', 'admin_password').single();
-  if (error) { alert('Connection error: ' + error.message); return; }
-  if (data && data.value === pwd) {
-    document.getElementById('loginBox').classList.add('hidden');
-    document.getElementById('panel').classList.remove('hidden');
-    loadOrders();
-    startOrderWatcher();
-  } else {
-    alert('Wrong password');
-  }
+function addSoundTestButton() {
+  if (document.getElementById('testBuzzerBtn')) return;
+  const btn = document.createElement('button');
+  btn.id = 'testBuzzerBtn';
+  btn.textContent = '🔊 Test Buzzer';
+  btn.style.cssText = `
+    position:fixed; bottom:16px; right:16px;
+    padding:12px 18px;
+    background:linear-gradient(135deg, #2e7d32, #66bb6a);
+    color:#fff; border:none; border-radius:30px;
+    font-weight:bold; font-size:13px;
+    box-shadow:0 6px 20px rgba(0,0,0,0.4);
+    z-index:99998; cursor:pointer;
+  `;
+  btn.onclick = () => triggerBuzzer();
+  document.body.appendChild(btn);
 }
+
+function addResetButton() {
+  if (document.getElementById('resetDeviceBtn')) return;
+  const btn = document.createElement('button');
+  btn.id = 'resetDeviceBtn';
+  btn.textContent = '🔄 Reset Device';
+  btn.style.cssText = `
+    position:fixed; bottom:16px; left:16px;
+    padding:10px 14px;
+    background:rgba(245,87,108,0.8);
+    color:#fff; border:none; border-radius:30px;
+    font-weight:bold; font-size:12px;
+    box-shadow:0 6px 20px rgba(0,0,0,0.4);
+    z-index:99998; cursor:pointer;
+  `;
+  btn.onclick = () => {
+    if (confirm('Reset device lock? You will need to re-register with the secret key.')) {
+      localStorage.removeItem(DEVICE_KEY_STORAGE);
+      location.href = 'admin.html';
+    }
+  };
+  document.body.appendChild(btn);
+}
+
+/* ══════ BOOT ══════ */
+async function bootAdmin() {
+  const result = await verifyDevice();
+  if (!result.ok) { showAccessDenied(result.reason); return; }
+
+  document.getElementById('loadingScreen').classList.add('hide');
+  document.getElementById('mainContent').style.display = 'block';
+
+  const label = document.getElementById('deviceLabel');
+  if (label) label.textContent = '✓ ' + result.fingerprint.slice(0, 8) + '...';
+
+  loadOrders();
+
+  // Silent audio unlock
+  try {
+    const a = new Audio(CUSTOM_BUZZER);
+    a.volume = 0;
+    a.play().then(() => { a.pause(); }).catch(() => {});
+  } catch (e) {}
+
+  startOrderWatcher();
+  addSoundTestButton();
+  addResetButton();
+}
+
+window.addEventListener('load', bootAdmin);
 
 /* ══════ ORDERS ══════ */
 async function loadOrders() {
@@ -129,19 +221,14 @@ async function loadOrders() {
           </select>
         </td>
         <td>
-          <button onclick="sendWhatsApp('${o.order_id}')" title="WhatsApp" style="background:none;border:none;font-size:18px;cursor:pointer">📲</button>
-          <button onclick="sendEmail('${o.order_id}')" title="Email" style="background:none;border:none;font-size:18px;cursor:pointer">✉️</button>
+          <button onclick="sendWhatsApp('${o.order_id}')" style="background:none;border:none;font-size:18px;cursor:pointer">📲</button>
+          <button onclick="sendEmail('${o.order_id}')" style="background:none;border:none;font-size:18px;cursor:pointer">✉️</button>
         </td>
       </tr>`).join('')}`;
 }
 
-async function updateStatus(id, status) {
-  await db.from('orders').update({ status }).eq('order_id', id);
-}
-
-async function updatePayment(id, payment_status) {
-  await db.from('orders').update({ payment_status }).eq('order_id', id);
-}
+async function updateStatus(id, status) { await db.from('orders').update({ status }).eq('order_id', id); }
+async function updatePayment(id, payment_status) { await db.from('orders').update({ payment_status }).eq('order_id', id); }
 
 async function sendWhatsApp(orderId) {
   const { data } = await db.from('orders').select('*').eq('order_id', orderId).single();
@@ -175,11 +262,10 @@ Sri Srinivasa Dairy Farm`;
   window.location.href = `mailto:${data.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
-/* ══════ DELIVERY LIST ══════ */
+/* ══════ DELIVERY ══════ */
 async function loadDelivery() {
   const today = new Date().toISOString().slice(0, 10);
-  const { data } = await db.from('orders')
-    .select('*')
+  const { data } = await db.from('orders').select('*')
     .gte('created_at', today + 'T00:00:00')
     .order('created_at', { ascending: false });
 
@@ -199,11 +285,9 @@ async function loadDelivery() {
           <div class="items">🛒 ${(o.items || []).map(i => i.name).join(', ')}</div>
           <div class="row" style="margin-top:6px">
             <span style="font-size:11px;opacity:0.7">${o.order_id}</span>
-            <a href="https://wa.me/${String(o.phone).replace(/\D/g, '')}?text=${encodeURIComponent('Delivering your milk shortly 🐄')}" target="_blank" style="color:#66bb6a;font-size:12px">Message →</a>
+            <a href="https://wa.me/${String(o.phone).replace(/\D/g, '')}" target="_blank" style="color:#66bb6a;font-size:12px">Message →</a>
           </div>
-        </div>
-      `).join('')}
-    `;
+        </div>`).join('')}`;
   };
 
   document.getElementById('deliveryList').innerHTML =
@@ -238,15 +322,10 @@ async function addProduct() {
   loadProducts();
 }
 
-async function updateProduct(id, field, value) {
-  await db.from('products').update({ [field]: value }).eq('id', id);
-}
+async function updateProduct(id, field, value) { await db.from('products').update({ [field]: value }).eq('id', id); }
 
 async function deleteProduct(id) {
-  if (confirm('Delete?')) {
-    await db.from('products').delete().eq('id', id);
-    loadProducts();
-  }
+  if (confirm('Delete?')) { await db.from('products').delete().eq('id', id); loadProducts(); }
 }
 
 /* ══════ COUPONS ══════ */
@@ -278,15 +357,9 @@ async function addCoupon() {
   loadCoupons();
 }
 
-async function toggleCoupon(id, active) {
-  await db.from('coupons').update({ active }).eq('id', id);
-}
-
+async function toggleCoupon(id, active) { await db.from('coupons').update({ active }).eq('id', id); }
 async function deleteCoupon(id) {
-  if (confirm('Delete coupon?')) {
-    await db.from('coupons').delete().eq('id', id);
-    loadCoupons();
-  }
+  if (confirm('Delete coupon?')) { await db.from('coupons').delete().eq('id', id); loadCoupons(); }
 }
 
 /* ══════ ANALYTICS ══════ */
