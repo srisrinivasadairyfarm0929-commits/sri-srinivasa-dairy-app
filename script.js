@@ -6,7 +6,6 @@ let cart = [], upiId = '', step = 1;
 let discount = 0, appliedCoupon = null;
 let natureAudio = null;
 
-/* ══════ SOUNDS ══════ */
 const sounds = {
   add: new Audio('https://actions.google.com/sounds/v1/cart/button_click.ogg'),
   success: new Audio('https://actions.google.com/sounds/v1/cart/achievement_bell.ogg'),
@@ -34,20 +33,16 @@ function playNatureSound() {
   }, 20000);
 }
 
-/* ══════ BOOT ══════ */
 window.addEventListener('load', () => {
   playNatureSound();
-
   const splash = document.getElementById('splash');
   const main = document.getElementById('mainApp');
-
   setTimeout(() => {
     if (splash) { splash.classList.add('hide'); setTimeout(() => splash.remove(), 700); }
     if (main) main.classList.remove('hidden');
   }, 3000);
 });
 
-/* ══════ DRAWER ══════ */
 function toggleDrawer() {
   document.getElementById('drawer').classList.toggle('open');
   document.getElementById('overlay').classList.toggle('open');
@@ -61,7 +56,6 @@ function openWhatsApp() {
   window.open(`https://wa.me/919121188763?text=${msg}`, '_blank');
 }
 
-/* ══════ LOAD DATA ══════ */
 (async () => {
   try {
     const { data: s } = await db.from('settings').select('*');
@@ -98,7 +92,6 @@ function openWhatsApp() {
   } catch (e) { console.warn('Data load error:', e); }
 })();
 
-/* ══════ QUANTITY ══════ */
 function selectQty(btn, productId, basePrice, name) {
   const row = btn.parentElement;
   row.querySelectorAll('.qty-pill').forEach(b => b.classList.remove('active'));
@@ -158,7 +151,6 @@ function updateTotal() {
   if (dEl) dEl.textContent = discount ? ` (-₹${discount})` : '';
 }
 
-/* ══════ COUPON ══════ */
 async function applyCoupon() {
   const code = document.getElementById('couponCode').value.trim().toUpperCase();
   const msg = document.getElementById('couponMsg');
@@ -174,7 +166,6 @@ async function applyCoupon() {
   updateTotal();
 }
 
-/* ══════ REPEAT ══════ */
 function repeatLastOrder() {
   const last = localStorage.getItem('lastOrder');
   if (!last) { play('error'); alert('No previous order found. Place an order first.'); return; }
@@ -191,7 +182,6 @@ function repeatLastOrder() {
   alert('✅ Last order restored!');
 }
 
-/* ══════ MONTHLY BILL ══════ */
 async function showMonthlyBill() {
   const phone = prompt('Enter your phone number (10 digits):');
   if (!phone) return;
@@ -239,7 +229,6 @@ function closeBill() {
   document.getElementById('billModal').classList.add('hidden');
 }
 
-/* ══════ ORDER SUBMIT ══════ */
 document.getElementById('orderForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!cart.length) { play('error'); alert('Select at least one product'); return; }
@@ -313,7 +302,6 @@ function closePopup() {
   document.getElementById('successPopup').classList.add('hidden');
 }
 
-/* ══════ RIPPLE ══════ */
 document.addEventListener('click', (e) => {
   const btn = e.target.closest('.submit-btn, .add-btn, .upi-btn, .qty-pill, .custom-qty-btn, .quick-btn');
   if (!btn) return;
