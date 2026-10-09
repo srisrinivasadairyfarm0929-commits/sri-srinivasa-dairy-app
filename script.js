@@ -6,6 +6,7 @@ let cart = [], upiId = '', step = 1;
 let discount = 0, appliedCoupon = null;
 let natureAudio = null, gameLoop = null;
 
+/* ══════ SOUNDS ══════ */
 const sounds = {
   add: new Audio('https://actions.google.com/sounds/v1/cart/button_click.ogg'),
   success: new Audio('https://actions.google.com/sounds/v1/cart/achievement_bell.ogg'),
@@ -21,9 +22,6 @@ function playNatureSound() {
     document.addEventListener('touchstart', () => {
       if (natureAudio && natureAudio.paused) natureAudio.play().catch(()=>{});
     }, { once: true });
-    document.addEventListener('click', () => {
-      if (natureAudio && natureAudio.paused) natureAudio.play().catch(()=>{});
-    }, { once: true });
   });
   setTimeout(() => {
     if (!natureAudio) return;
@@ -36,30 +34,52 @@ function playNatureSound() {
   }, 20000);
 }
 
+/* ══════ BOOT — defaults to ONLINE, only checks offline after timeout ══════ */
 window.addEventListener('load', () => {
   playNatureSound();
+
   const splash = document.getElementById('splash');
   const offline = document.getElementById('offlineScreen');
   const main = document.getElementById('mainApp');
+
   setTimeout(() => {
     splash.classList.add('hide');
     setTimeout(() => splash.remove(), 700);
-    if (navigator.onLine) main.classList.remove('hidden');
-    else { offline.classList.remove('hidden'); startGame(); }
-  }, 3500);
+
+    // Default: show main app (assume online)
+    main.classList.remove('hidden');
+
+    // Verify connection in background — if truly offline AND stays offline for 5 seconds, show game
+    let offlineTimer = setTimeout(() => {
+      if (!navigator.onLine) {
+        main.classList.add('hidden');
+        offline.classList.remove('hidden');
+        startGame();
+      }
+    }, 5000);
+
+    // Cancel the offline check if network comes back
+    const cancelCheck = () => {
+      clearTimeout(offlineTimer);
+      if (navigator.onLine) {
+        offline.classList.add('hidden');
+        main.classList.remove('hidden');
+        stopGame();
+      }
+    };
+    window.addEventListener('online', cancelCheck, { once: true });
+  }, 3000);
 });
 
 window.addEventListener('online', () => {
-  document.getElementById('offlineScreen').classList.add('hidden');
-  document.getElementById('mainApp').classList.remove('hidden');
+  const offline = document.getElementById('offlineScreen');
+  const main = document.getElementById('mainApp');
+  if (offline) offline.classList.add('hidden');
+  if (main) main.classList.remove('hidden');
   stopGame();
 });
-window.addEventListener('offline', () => {
-  document.getElementById('mainApp').classList.add('hidden');
-  document.getElementById('offlineScreen').classList.remove('hidden');
-  startGame();
-});
 
+/* ══════ DRAWER ══════ */
 function toggleDrawer() {
   document.getElementById('drawer').classList.toggle('open');
   document.getElementById('overlay').classList.toggle('open');
@@ -73,40 +93,44 @@ function openWhatsApp() {
   window.open(`https://wa.me/919121188763?text=${msg}`, '_blank');
 }
 
+/* ══════ LOAD DATA ══════ */
 (async () => {
-  const { data: s } = await db.from('settings').select('*');
-  s.forEach(x => { if (x.key === 'upi_id') upiId = x.value; });
-  const upiEl = document.getElementById('upiId');
-  if (upiEl) upiEl.textContent = upiId;
+  try {
+    const { data: s } = await db.from('settings').select('*');
+    s.forEach(x => { if (x.key === 'upi_id') upiId = x.value; });
+    const upiEl = document.getElementById('upiId');
+    if (upiEl) upiEl.textContent = upiId;
 
-  const { data: products } = await db.from('products').select('*').eq('active', true);
-  const quantities = [
-    { label: '0.5L', mult: 0.5 },
-    { label: '1L', mult: 1 },
-    { label: '2L', mult: 2 },
-    { label: '5L', mult: 5 },
-    { label: '10L', mult: 10 }
-  ];
-  const itemsEl = document.getElementById('items');
-  if (itemsEl) {
-    itemsEl.innerHTML = products.map((p, idx) => `
-      <div class="item" data-id="${p.id}" data-name="${p.name}" data-price="${p.price}" style="animation-delay:${idx*0.1}s">
-        <div class="item-top">
-          <div><div class="item-name">🐄 ${p.name}</div><div class="item-stock">Base: ₹${p.price}/L</div></div>
-          <div class="item-price">₹${p.price}/L</div>
+    const { data: products } = await db.from('products').select('*').eq('active', true);
+    const quantities = [
+      { label: '0.5L', mult: 0.5 },
+      { label: '1L', mult: 1 },
+      { label: '2L', mult: 2 },
+      { label: '5L', mult: 5 },
+      { label: '10L', mult: 10 }
+    ];
+    const itemsEl = document.getElementById('items');
+    if (itemsEl && products) {
+      itemsEl.innerHTML = products.map((p, idx) => `
+        <div class="item" data-id="${p.id}" data-name="${p.name}" data-price="${p.price}" style="animation-delay:${idx*0.1}s">
+          <div class="item-top">
+            <div><div class="item-name">🐄 ${p.name}</div><div class="item-stock">Base: ₹${p.price}/L</div></div>
+            <div class="item-price">₹${p.price}/L</div>
+          </div>
+          <div class="qty-row" data-product="${p.id}">
+            ${quantities.map(q => `<button type="button" class="qty-pill" data-qty="${q.mult}" data-label="${q.label}" onclick="selectQty(this, ${p.id}, ${p.price}, '${p.name}')">${q.label}</button>`).join('')}
+          </div>
+          <div class="custom-qty-row">
+            <input type="number" step="0.25" min="0.25" placeholder="Custom qty in L (e.g. 1.5)" id="custom_${p.id}">
+            <button type="button" class="custom-qty-btn" onclick="applyCustom(${p.id}, ${p.price}, '${p.name}')">Add</button>
+          </div>
         </div>
-        <div class="qty-row" data-product="${p.id}">
-          ${quantities.map(q => `<button type="button" class="qty-pill" data-qty="${q.mult}" data-label="${q.label}" onclick="selectQty(this, ${p.id}, ${p.price}, '${p.name}')">${q.label}</button>`).join('')}
-        </div>
-        <div class="custom-qty-row">
-          <input type="number" step="0.25" min="0.25" placeholder="Custom qty in L (e.g. 1.5)" id="custom_${p.id}">
-          <button type="button" class="custom-qty-btn" onclick="applyCustom(${p.id}, ${p.price}, '${p.name}')">Add</button>
-        </div>
-      </div>
-    `).join('');
-  }
+      `).join('');
+    }
+  } catch (e) { console.warn('Data load error:', e); }
 })();
 
+/* ══════ QUANTITY ══════ */
 function selectQty(btn, productId, basePrice, name) {
   const row = btn.parentElement;
   row.querySelectorAll('.qty-pill').forEach(b => b.classList.remove('active'));
@@ -166,6 +190,7 @@ function updateTotal() {
   if (dEl) dEl.textContent = discount ? ` (-₹${discount})` : '';
 }
 
+/* ══════ COUPON ══════ */
 async function applyCoupon() {
   const code = document.getElementById('couponCode').value.trim().toUpperCase();
   const msg = document.getElementById('couponMsg');
@@ -181,6 +206,7 @@ async function applyCoupon() {
   updateTotal();
 }
 
+/* ══════ REPEAT ══════ */
 function repeatLastOrder() {
   const last = localStorage.getItem('lastOrder');
   if (!last) { play('error'); alert('No previous order found. Place an order first.'); return; }
@@ -194,9 +220,10 @@ function repeatLastOrder() {
     });
   });
   play('success');
-  alert('✅ Last order restored! Review and continue.');
+  alert('✅ Last order restored!');
 }
 
+/* ══════ MONTHLY BILL ══════ */
 async function showMonthlyBill() {
   const phone = prompt('Enter your phone number (10 digits):');
   if (!phone) return;
@@ -217,7 +244,7 @@ async function showMonthlyBill() {
 
   if (error) { content.innerHTML = `<p style="color:#f5576c">Error: ${error.message}</p>`; return; }
   if (!data || !data.length) {
-    content.innerHTML = `<div class="bill-empty">No orders this month.<br>Start ordering to see your bill here! 🥛</div>`;
+    content.innerHTML = `<div class="bill-empty">No orders this month.<br>Start ordering to see your bill! 🥛</div>`;
     return;
   }
 
@@ -244,6 +271,7 @@ function closeBill() {
   document.getElementById('billModal').classList.add('hidden');
 }
 
+/* ══════ ORDER SUBMIT ══════ */
 document.getElementById('orderForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!cart.length) { play('error'); alert('Select at least one product'); return; }
@@ -317,6 +345,7 @@ function closePopup() {
   document.getElementById('successPopup').classList.add('hidden');
 }
 
+/* ══════ RIPPLE ══════ */
 document.addEventListener('click', (e) => {
   const btn = e.target.closest('.submit-btn, .add-btn, .upi-btn, .qty-pill, .custom-qty-btn, .quick-btn');
   if (!btn) return;
@@ -333,22 +362,33 @@ document.addEventListener('click', (e) => {
   setTimeout(() => ripple.remove(), 600);
 });
 
+/* ══════ SNAKE GAME — FIXED ══════ */
 const GRID = 16, CELL = 20;
 let snake, direction, food, score, best, canvas, ctx, gameSpeed;
 
 function startGame() {
   canvas = document.getElementById('gameCanvas');
   if (!canvas) return;
+
+  // Handle retina display crispness
+  canvas.width = 320;
+  canvas.height = 320;
+
   ctx = canvas.getContext('2d');
   best = Number(localStorage.getItem('snakeBest') || 0);
-  document.getElementById('best').textContent = best;
+  const bestEl = document.getElementById('best');
+  if (bestEl) bestEl.textContent = best;
+
   resetGame();
   if (gameLoop) clearInterval(gameLoop);
   gameLoop = setInterval(gameTick, gameSpeed);
-  document.addEventListener('keydown', handleKey);
 
+  // Touch swipe
   let tsx = 0, tsy = 0;
-  canvas.addEventListener('touchstart', e => { tsx = e.touches[0].clientX; tsy = e.touches[0].clientY; });
+  canvas.addEventListener('touchstart', e => {
+    tsx = e.touches[0].clientX;
+    tsy = e.touches[0].clientY;
+  });
   canvas.addEventListener('touchend', e => {
     const dx = e.changedTouches[0].clientX - tsx;
     const dy = e.changedTouches[0].clientY - tsy;
@@ -359,36 +399,43 @@ function startGame() {
     }
   }, { passive: true });
 
-  document.querySelectorAll('.dpad').forEach(btn => btn.addEventListener('click', () => setDir(btn.dataset.dir)));
+  // D-pad buttons
+  document.querySelectorAll('.dpad').forEach(btn => {
+    btn.onclick = () => setDir(btn.dataset.dir);
+  });
+
+  // Initial draw
+  drawGame();
 }
 
 function resetGame() {
   snake = [{x:8,y:8},{x:7,y:8},{x:6,y:8}];
   direction = { x: 1, y: 0 };
-  score = 0; gameSpeed = 150;
+  score = 0;
+  gameSpeed = 150;
   placeFood();
-  document.getElementById('score').textContent = 0;
+  const scoreEl = document.getElementById('score');
+  if (scoreEl) scoreEl.textContent = 0;
 }
+
 function placeFood() {
   let ok = false;
-  while (!ok) {
+  let tries = 0;
+  while (!ok && tries < 100) {
     food = { x: Math.floor(Math.random()*GRID), y: Math.floor(Math.random()*GRID) };
     ok = !snake.some(s => s.x === food.x && s.y === food.y);
+    tries++;
   }
 }
+
 function setDir(d) {
   if (!snake) return;
-  if (d==='up'    && direction.y===0) direction = { x:0, y:-1 };
-  if (d==='down'  && direction.y===0) direction = { x:0, y: 1 };
-  if (d==='left'  && direction.x===0) direction = { x:-1,y: 0 };
-  if (d==='right' && direction.x===0) direction = { x: 1,y: 0 };
+  if (d === 'up'    && direction.y === 0) direction = { x: 0, y: -1 };
+  if (d === 'down'  && direction.y === 0) direction = { x: 0, y: 1 };
+  if (d === 'left'  && direction.x === 0) direction = { x: -1, y: 0 };
+  if (d === 'right' && direction.x === 0) direction = { x: 1, y: 0 };
 }
-function handleKey(e) {
-  if (e.key==='ArrowUp')    setDir('up');
-  if (e.key==='ArrowDown')  setDir('down');
-  if (e.key==='ArrowLeft')  setDir('left');
-  if (e.key==='ArrowRight') setDir('right');
-}
+
 function gameTick() {
   if (!snake) return;
   const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
@@ -397,7 +444,8 @@ function gameTick() {
   snake.unshift(head);
   if (head.x === food.x && head.y === food.y) {
     score++;
-    document.getElementById('score').textContent = score;
+    const scoreEl = document.getElementById('score');
+    if (scoreEl) scoreEl.textContent = score;
     placeFood();
     if (score % 5 === 0 && gameSpeed > 70) {
       gameSpeed -= 10;
@@ -407,10 +455,12 @@ function gameTick() {
   } else snake.pop();
   drawGame();
 }
+
 function drawGame() {
+  if (!ctx) return;
   ctx.fillStyle = 'rgba(0,0,0,0.4)';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.strokeStyle = 'rgba(102,187,106,0.1)';
+  ctx.strokeStyle = 'rgba(102,187,106,0.15)';
   for (let i = 0; i < GRID; i++) {
     ctx.beginPath(); ctx.moveTo(i*CELL,0); ctx.lineTo(i*CELL,canvas.height); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(0,i*CELL); ctx.lineTo(canvas.width,i*CELL); ctx.stroke();
@@ -424,12 +474,14 @@ function drawGame() {
     ctx.fillRect(s.x*CELL+1, s.y*CELL+1, CELL-2, CELL-2);
   });
 }
+
 function gameOver() {
   clearInterval(gameLoop); gameLoop = null;
   if (score > best) {
     best = score;
     localStorage.setItem('snakeBest', best);
-    document.getElementById('best').textContent = best;
+    const bestEl = document.getElementById('best');
+    if (bestEl) bestEl.textContent = best;
   }
   ctx.fillStyle = 'rgba(0,0,0,0.8)';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -444,11 +496,13 @@ function gameOver() {
   canvas.addEventListener('click', restartGame, { once: true });
   canvas.addEventListener('touchstart', restartGame, { once: true });
 }
+
 function restartGame() {
   resetGame();
   if (gameLoop) clearInterval(gameLoop);
   gameLoop = setInterval(gameTick, gameSpeed);
 }
+
 function stopGame() {
   if (gameLoop) { clearInterval(gameLoop); gameLoop = null; }
-      }
+    }
