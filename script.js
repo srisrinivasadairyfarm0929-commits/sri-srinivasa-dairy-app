@@ -4,14 +4,26 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let cart = [], upiId = '', step = 1;
 let discount = 0, appliedCoupon = null;
-let natureAudio = null;
+let natureAudio = null, popupTimer = null, countdownInterval = null;
 
+/* ══════ SOUNDS ══════ */
 const sounds = {
   add: new Audio('https://actions.google.com/sounds/v1/cart/button_click.ogg'),
   success: new Audio('https://actions.google.com/sounds/v1/cart/achievement_bell.ogg'),
   error: new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg')
 };
-const play = n => { sounds[n].currentTime = 0; sounds[n].play().catch(()=>{}); };
+const play = n => { try { sounds[n].currentTime = 0; sounds[n].play().catch(()=>{}); } catch(e){} };
+
+/* Global click sound for every button */
+document.addEventListener('click', (e) => {
+  if (e.target.closest('button, a, .qty-pill, .quick-btn, input[type=radio], input[type=checkbox]')) {
+    try {
+      const clickAudio = new Audio('https://actions.google.com/sounds/v1/cart/button_click.ogg');
+      clickAudio.volume = 0.35;
+      clickAudio.play().catch(()=>{});
+    } catch (err) {}
+  }
+}, true);
 
 function playNatureSound() {
   natureAudio = new Audio('https://actions.google.com/sounds/v1/ambiences/forest_bird_chirps.ogg');
@@ -33,6 +45,7 @@ function playNatureSound() {
   }, 20000);
 }
 
+/* ══════ BOOT ══════ */
 window.addEventListener('load', () => {
   playNatureSound();
   const splash = document.getElementById('splash');
@@ -43,6 +56,7 @@ window.addEventListener('load', () => {
   }, 3000);
 });
 
+/* ══════ DRAWER ══════ */
 function toggleDrawer() {
   document.getElementById('drawer').classList.toggle('open');
   document.getElementById('overlay').classList.toggle('open');
@@ -56,6 +70,7 @@ function openWhatsApp() {
   window.open(`https://wa.me/919121188763?text=${msg}`, '_blank');
 }
 
+/* ══════ LOAD DATA ══════ */
 (async () => {
   try {
     const { data: s } = await db.from('settings').select('*');
@@ -92,6 +107,7 @@ function openWhatsApp() {
   } catch (e) { console.warn('Data load error:', e); }
 })();
 
+/* ══════ QUANTITY ══════ */
 function selectQty(btn, productId, basePrice, name) {
   const row = btn.parentElement;
   row.querySelectorAll('.qty-pill').forEach(b => b.classList.remove('active'));
@@ -151,6 +167,7 @@ function updateTotal() {
   if (dEl) dEl.textContent = discount ? ` (-₹${discount})` : '';
 }
 
+/* ══════ COUPON ══════ */
 async function applyCoupon() {
   const code = document.getElementById('couponCode').value.trim().toUpperCase();
   const msg = document.getElementById('couponMsg');
@@ -166,6 +183,7 @@ async function applyCoupon() {
   updateTotal();
 }
 
+/* ══════ REPEAT ══════ */
 function repeatLastOrder() {
   const last = localStorage.getItem('lastOrder');
   if (!last) { play('error'); alert('No previous order found. Place an order first.'); return; }
@@ -182,6 +200,7 @@ function repeatLastOrder() {
   alert('✅ Last order restored!');
 }
 
+/* ══════ MONTHLY BILL ══════ */
 async function showMonthlyBill() {
   const phone = prompt('Enter your phone number (10 digits):');
   if (!phone) return;
@@ -229,6 +248,33 @@ function closeBill() {
   document.getElementById('billModal').classList.add('hidden');
 }
 
+/* ══════ SUCCESS POPUP + 2 MIN COUNTDOWN ══════ */
+function openSuccessPopup() {
+  document.getElementById('successPopup').classList.remove('hidden');
+  let remaining = 120;
+  const cdEl = document.getElementById('countdown');
+  if (cdEl) cdEl.textContent = remaining;
+
+  countdownInterval = setInterval(() => {
+    remaining--;
+    const el = document.getElementById('countdown');
+    if (el) el.textContent = remaining;
+    if (remaining <= 0) {
+      clearInterval(countdownInterval);
+      closePopup();
+    }
+  }, 1000);
+}
+
+function closePopup() {
+  document.getElementById('successPopup').classList.add('hidden');
+  if (popupTimer) clearTimeout(popupTimer);
+  if (countdownInterval) clearInterval(countdownInterval);
+  popupTimer = null;
+  countdownInterval = null;
+}
+
+/* ══════ ORDER SUBMIT ══════ */
 document.getElementById('orderForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!cart.length) { play('error'); alert('Select at least one product'); return; }
@@ -285,7 +331,7 @@ document.getElementById('orderForm').addEventListener('submit', async (e) => {
   play('success');
   confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
   document.getElementById('orderId').textContent = order.order_id;
-  document.getElementById('successPopup').classList.remove('hidden');
+  openSuccessPopup();
 
   cart = []; discount = 0; appliedCoupon = null;
   renderCart();
@@ -298,10 +344,7 @@ document.getElementById('orderForm').addEventListener('submit', async (e) => {
   document.getElementById('orderForm').reset();
 });
 
-function closePopup() {
-  document.getElementById('successPopup').classList.add('hidden');
-}
-
+/* ══════ RIPPLE ══════ */
 document.addEventListener('click', (e) => {
   const btn = e.target.closest('.submit-btn, .add-btn, .upi-btn, .qty-pill, .custom-qty-btn, .quick-btn');
   if (!btn) return;
