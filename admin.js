@@ -1,5 +1,5 @@
 const SUPABASE_URL = 'https://qyrulqxbjoylohxgwywo.supabase.co';
-const SUPABASE_KEY = 'PASTE_YOUR_ANON_KEY_HERE';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5cnVscXhiam95bG9oeGd3eXdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0NzE4NDgsImV4cCI6MjEwNzA0Nzg0OH0.UFGFHyMN0yEen9hPvC0Xl9UqZCRrmcP5RIqpAA_my38';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* ══════ BUZZER WATCHER ══════ */
