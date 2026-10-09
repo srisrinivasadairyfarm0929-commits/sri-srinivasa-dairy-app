@@ -34,49 +34,17 @@ function playNatureSound() {
   }, 20000);
 }
 
-/* ══════ BOOT — defaults to ONLINE, only checks offline after timeout ══════ */
+/* ══════ BOOT — always shows main app ══════ */
 window.addEventListener('load', () => {
   playNatureSound();
 
   const splash = document.getElementById('splash');
-  const offline = document.getElementById('offlineScreen');
   const main = document.getElementById('mainApp');
 
   setTimeout(() => {
-    splash.classList.add('hide');
-    setTimeout(() => splash.remove(), 700);
-
-    // Default: show main app (assume online)
-    main.classList.remove('hidden');
-
-    // Verify connection in background — if truly offline AND stays offline for 5 seconds, show game
-    let offlineTimer = setTimeout(() => {
-      if (!navigator.onLine) {
-        main.classList.add('hidden');
-        offline.classList.remove('hidden');
-        startGame();
-      }
-    }, 5000);
-
-    // Cancel the offline check if network comes back
-    const cancelCheck = () => {
-      clearTimeout(offlineTimer);
-      if (navigator.onLine) {
-        offline.classList.add('hidden');
-        main.classList.remove('hidden');
-        stopGame();
-      }
-    };
-    window.addEventListener('online', cancelCheck, { once: true });
+    if (splash) { splash.classList.add('hide'); setTimeout(() => splash.remove(), 700); }
+    if (main) main.classList.remove('hidden');
   }, 3000);
-});
-
-window.addEventListener('online', () => {
-  const offline = document.getElementById('offlineScreen');
-  const main = document.getElementById('mainApp');
-  if (offline) offline.classList.add('hidden');
-  if (main) main.classList.remove('hidden');
-  stopGame();
 });
 
 /* ══════ DRAWER ══════ */
@@ -97,7 +65,7 @@ function openWhatsApp() {
 (async () => {
   try {
     const { data: s } = await db.from('settings').select('*');
-    s.forEach(x => { if (x.key === 'upi_id') upiId = x.value; });
+    if (s) s.forEach(x => { if (x.key === 'upi_id') upiId = x.value; });
     const upiEl = document.getElementById('upiId');
     if (upiEl) upiEl.textContent = upiId;
 
@@ -362,33 +330,24 @@ document.addEventListener('click', (e) => {
   setTimeout(() => ripple.remove(), 600);
 });
 
-/* ══════ SNAKE GAME — FIXED ══════ */
+/* ══════ SNAKE GAME — kept for future use ══════ */
 const GRID = 16, CELL = 20;
 let snake, direction, food, score, best, canvas, ctx, gameSpeed;
 
 function startGame() {
   canvas = document.getElementById('gameCanvas');
   if (!canvas) return;
-
-  // Handle retina display crispness
-  canvas.width = 320;
-  canvas.height = 320;
-
+  canvas.width = 320; canvas.height = 320;
   ctx = canvas.getContext('2d');
   best = Number(localStorage.getItem('snakeBest') || 0);
   const bestEl = document.getElementById('best');
   if (bestEl) bestEl.textContent = best;
-
   resetGame();
   if (gameLoop) clearInterval(gameLoop);
   gameLoop = setInterval(gameTick, gameSpeed);
 
-  // Touch swipe
   let tsx = 0, tsy = 0;
-  canvas.addEventListener('touchstart', e => {
-    tsx = e.touches[0].clientX;
-    tsy = e.touches[0].clientY;
-  });
+  canvas.addEventListener('touchstart', e => { tsx = e.touches[0].clientX; tsy = e.touches[0].clientY; });
   canvas.addEventListener('touchend', e => {
     const dx = e.changedTouches[0].clientX - tsx;
     const dy = e.changedTouches[0].clientY - tsy;
@@ -399,35 +358,26 @@ function startGame() {
     }
   }, { passive: true });
 
-  // D-pad buttons
-  document.querySelectorAll('.dpad').forEach(btn => {
-    btn.onclick = () => setDir(btn.dataset.dir);
-  });
-
-  // Initial draw
+  document.querySelectorAll('.dpad').forEach(btn => { btn.onclick = () => setDir(btn.dataset.dir); });
   drawGame();
 }
 
 function resetGame() {
   snake = [{x:8,y:8},{x:7,y:8},{x:6,y:8}];
   direction = { x: 1, y: 0 };
-  score = 0;
-  gameSpeed = 150;
+  score = 0; gameSpeed = 150;
   placeFood();
   const scoreEl = document.getElementById('score');
   if (scoreEl) scoreEl.textContent = 0;
 }
-
 function placeFood() {
-  let ok = false;
-  let tries = 0;
+  let ok = false, tries = 0;
   while (!ok && tries < 100) {
     food = { x: Math.floor(Math.random()*GRID), y: Math.floor(Math.random()*GRID) };
     ok = !snake.some(s => s.x === food.x && s.y === food.y);
     tries++;
   }
 }
-
 function setDir(d) {
   if (!snake) return;
   if (d === 'up'    && direction.y === 0) direction = { x: 0, y: -1 };
@@ -435,7 +385,6 @@ function setDir(d) {
   if (d === 'left'  && direction.x === 0) direction = { x: -1, y: 0 };
   if (d === 'right' && direction.x === 0) direction = { x: 1, y: 0 };
 }
-
 function gameTick() {
   if (!snake) return;
   const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
@@ -455,7 +404,6 @@ function gameTick() {
   } else snake.pop();
   drawGame();
 }
-
 function drawGame() {
   if (!ctx) return;
   ctx.fillStyle = 'rgba(0,0,0,0.4)';
@@ -474,7 +422,6 @@ function drawGame() {
     ctx.fillRect(s.x*CELL+1, s.y*CELL+1, CELL-2, CELL-2);
   });
 }
-
 function gameOver() {
   clearInterval(gameLoop); gameLoop = null;
   if (score > best) {
@@ -496,13 +443,11 @@ function gameOver() {
   canvas.addEventListener('click', restartGame, { once: true });
   canvas.addEventListener('touchstart', restartGame, { once: true });
 }
-
 function restartGame() {
   resetGame();
   if (gameLoop) clearInterval(gameLoop);
   gameLoop = setInterval(gameTick, gameSpeed);
 }
-
 function stopGame() {
   if (gameLoop) { clearInterval(gameLoop); gameLoop = null; }
-    }
+          }
