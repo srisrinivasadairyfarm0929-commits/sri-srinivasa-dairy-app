@@ -1,69 +1,151 @@
 const SUPABASE_URL = 'https://qyrulqxbjoylohxgwywo.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5cnVscXhiam95bG9oeGd3eXdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0NzE4NDgsImV4cCI6MjEwNzA0Nzg0OH0.UFGFHyMN0yEen9hPvC0Xl9UqZCRrmcP5RIqpAA_my38';
+const SUPABASE_KEY = 'PASTE_YOUR_ANON_KEY_HERE';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* ══════ DEVICE LOCK ══════ */
 const DEVICE_KEY_STORAGE = 'ssdf_device_lock_v2';
-const OWNER_DEVICE_KEY = 'SSDF-OWNER-2026-1629-AMMANANNA@143-PRIVATE';
+const OWNER_DEVICE_KEY = 'YOUR-OWN-SECRET-HERE';
 
-/* Generate stable device fingerprint */
-async function getDeviceFingerprint() {
+/* Simple fallback fingerprint */
+function getSimpleFingerprint() {
   const parts = [
     navigator.userAgent,
     navigator.language,
     screen.width + 'x' + screen.height,
-    screen.colorDepth,
     new Date().getTimezoneOffset(),
-    navigator.hardwareConcurrency || 'na',
-    navigator.platform || 'na',
-    navigator.deviceMemory || 'na',
-    navigator.maxTouchPoints || 0
+    navigator.platform || 'na'
   ];
   const raw = parts.join('|');
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
-  return [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0')).join('').slice(0, 24);
-}
-
-/* Verify this device is the owner's */
-async function verifyDevice() {
-  const urlParams = new URLSearchParams(location.search);
-  const regKey = urlParams.get('register');
-
-  // Register this device if URL has correct secret
-  if (regKey === OWNER_DEVICE_KEY) {
-    const fp = await getDeviceFingerprint();
-    localStorage.setItem(DEVICE_KEY_STORAGE, fp);
-    history.replaceState({}, '', 'admin.html');
-    return { ok: true, fingerprint: fp };
+  let hash = 0;
+  for (let i = 0; i < raw.length; i++) {
+    hash = ((hash << 5) - hash) + raw.charCodeAt(i);
+    hash = hash & hash;
   }
-
-  const saved = localStorage.getItem(DEVICE_KEY_STORAGE);
-  const current = await getDeviceFingerprint();
-
-  if (!saved) return { ok: false, reason: 'no_device' };
-  if (saved !== current) return { ok: false, reason: 'wrong_device' };
-  return { ok: true, fingerprint: current };
+  return Math.abs(hash).toString(16).padStart(16, '0');
 }
 
-function showAccessDenied(reason) {
-  document.getElementById('loadingScreen').classList.add('hide');
-  const el = document.getElementById('accessDenied');
-  el.classList.add('show');
-  if (reason === 'no_device') {
-    el.innerHTML = `
-      <div>
-        <h1>🔒</h1>
-        <h2>Not Registered</h2>
-        <p>This device is not registered as the owner's phone.</p>
-        <p style="font-size:12px;opacity:0.5;margin-top:30px">🐄 Sri Srinivasa Dairy Farm</p>
-      </div>`;
+/* Try crypto, fallback to simple */
+async function getDeviceFingerprint() {
+  try {
+    const parts = [
+      navigator.userAgent,
+      navigator.language,
+      screen.width + 'x' + screen.height,
+      new Date().getTimezoneOffset(),
+      navigator.platform || 'na'
+    ];
+    const raw = parts.join('|');
+    if (window.crypto && crypto.subtle && crypto.subtle.digest) {
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+      return [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0')).join('').slice(0, 24);
+    }
+  } catch (e) {}
+  return getSimpleFingerprint();
+}
+
+/* Main boot */
+async function bootAdmin() {
+  const loadingEl = document.getElementById('loadingScreen');
+  const deniedEl = document.getElementById('accessDenied');
+  const mainEl = document.getElementById('mainContent');
+
+  try {
+    const urlParams = new URLSearchParams(location.search);
+    const regKey = urlParams.get('register');
+
+    // Register this device
+    if (regKey === OWNER_DEVICE_KEY) {
+      const fp = await getDeviceFingerprint();
+      localStorage.setItem(DEVICE_KEY_STORAGE, fp);
+      history.replaceState({}, '', 'admin.html');
+      showPanel(fp, loadingEl, mainEl);
+      return;
+    }
+
+    const saved = localStorage.getItem(DEVICE_KEY_STORAGE);
+    const current = await getDeviceFingerprint();
+
+    if (!saved) {
+      if (loadingEl) loadingEl.classList.add('hide');
+      if (deniedEl) {
+        deniedEl.classList.add('show');
+        deniedEl.innerHTML = `
+          <div>
+            <h1>🔒</h1>
+            <h2>Not Registered</h2>
+            <p style="margin-top:12px">This admin panel is restricted to the owner's device.</p>
+            <div style="background:rgba(255,213,79,0.15);border-left:4px solid #ffd54f;padding:16px;border-radius:10px;margin-top:24px;text-align:left;font-size:13px;max-width:340px">
+              <b>Owner setup:</b><br>
+              1. Open the register URL on your phone<br>
+              2. Or contact farm owner
+            </div>
+            <p style="font-size:11px;opacity:0.5;margin-top:30px">🐄 Sri Srinivasa Dairy Farm</p>
+          </div>`;
+      }
+      return;
+    }
+
+    if (saved !== current) {
+      if (loadingEl) loadingEl.classList.add('hide');
+      if (deniedEl) deniedEl.classList.add('show');
+      return;
+    }
+
+    showPanel(current, loadingEl, mainEl);
+
+  } catch (err) {
+    console.error('Boot error:', err);
+    if (loadingEl) loadingEl.classList.add('hide');
+    if (deniedEl) {
+      deniedEl.classList.add('show');
+      deniedEl.innerHTML = `
+        <div>
+          <h1>⚠️</h1>
+          <h2>Error</h2>
+          <p style="margin-top:12px;font-size:13px;opacity:0.8">${err.message || 'Something went wrong'}</p>
+          <button onclick="location.reload()" style="margin-top:20px;padding:12px 24px;background:#2e7d32;color:#fff;border:none;border-radius:10px;font-weight:bold;cursor:pointer">🔄 Retry</button>
+        </div>`;
+    }
   }
 }
 
-/* ══════ BUZZER SETUP ══════ */
+function showPanel(fingerprint, loadingEl, mainEl) {
+  if (loadingEl) loadingEl.classList.add('hide');
+  if (mainEl) mainEl.style.display = 'block';
+
+  const label = document.getElementById('deviceLabel');
+  if (label) label.textContent = '✓ ' + fingerprint.slice(0, 8) + '...';
+
+  try { loadOrders(); } catch (e) {}
+  try {
+    const a = new Audio('buzzer.mp3');
+    a.volume = 0;
+    a.play().then(() => { a.pause(); }).catch(() => {});
+  } catch (e) {}
+  try { startOrderWatcher(); } catch (e) {}
+  try { addSoundTestButton(); } catch (e) {}
+  try { addResetButton(); } catch (e) {}
+}
+
+function initAdmin() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(bootAdmin, 100));
+  } else {
+    setTimeout(bootAdmin, 100);
+  }
+  setTimeout(() => {
+    const loadingEl = document.getElementById('loadingScreen');
+    if (loadingEl && !loadingEl.classList.contains('hide')) {
+      bootAdmin();
+    }
+  }, 6000);
+}
+
+window.addEventListener('load', initAdmin);
+
+/* ══════ BUZZER ══════ */
 const CUSTOM_BUZZER = 'buzzer.mp3';
 const FALLBACK_BUZZER = 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3?filename=error-126627.mp3';
-
 let lastOrderCount = 0;
 let watcherInterval = null;
 
@@ -148,7 +230,7 @@ function addResetButton() {
   if (document.getElementById('resetDeviceBtn')) return;
   const btn = document.createElement('button');
   btn.id = 'resetDeviceBtn';
-  btn.textContent = '🔄 Reset Device';
+  btn.textContent = '🔄 Reset';
   btn.style.cssText = `
     position:fixed; bottom:16px; left:16px;
     padding:10px 14px;
@@ -159,7 +241,7 @@ function addResetButton() {
     z-index:99998; cursor:pointer;
   `;
   btn.onclick = () => {
-    if (confirm('Reset device lock? You will need to re-register with the secret key.')) {
+    if (confirm('Reset device lock?')) {
       localStorage.removeItem(DEVICE_KEY_STORAGE);
       location.href = 'admin.html';
     }
@@ -167,39 +249,13 @@ function addResetButton() {
   document.body.appendChild(btn);
 }
 
-/* ══════ BOOT ══════ */
-async function bootAdmin() {
-  const result = await verifyDevice();
-  if (!result.ok) { showAccessDenied(result.reason); return; }
-
-  document.getElementById('loadingScreen').classList.add('hide');
-  document.getElementById('mainContent').style.display = 'block';
-
-  const label = document.getElementById('deviceLabel');
-  if (label) label.textContent = '✓ ' + result.fingerprint.slice(0, 8) + '...';
-
-  loadOrders();
-
-  // Silent audio unlock
-  try {
-    const a = new Audio(CUSTOM_BUZZER);
-    a.volume = 0;
-    a.play().then(() => { a.pause(); }).catch(() => {});
-  } catch (e) {}
-
-  startOrderWatcher();
-  addSoundTestButton();
-  addResetButton();
-}
-
-window.addEventListener('load', bootAdmin);
-
 /* ══════ ORDERS ══════ */
 async function loadOrders() {
   const { data } = await db.from('orders').select('*').order('created_at', { ascending: false });
   const statuses = ['Pending', 'Confirmed', 'Shipped', 'Delivered', 'Cancelled'];
-
-  document.getElementById('ordersTable').innerHTML = `
+  const el = document.getElementById('ordersTable');
+  if (!el) return;
+  el.innerHTML = `
     <tr><th>Order</th><th>Name</th><th>Total</th><th>UTR</th><th>Slot</th><th>Payment</th><th>Status</th><th>Actions</th></tr>
     ${(data || []).map(o => `
       <tr>
@@ -268,11 +324,9 @@ async function loadDelivery() {
   const { data } = await db.from('orders').select('*')
     .gte('created_at', today + 'T00:00:00')
     .order('created_at', { ascending: false });
-
   const morning = (data || []).filter(o => (o.slot || '').includes('Morning'));
   const evening = (data || []).filter(o => (o.slot || '').includes('Evening'));
   const other = (data || []).filter(o => !(o.slot || '').includes('Morning') && !(o.slot || '').includes('Evening'));
-
   const renderGroup = (title, list) => {
     if (!list.length) return '';
     return `
@@ -283,23 +337,21 @@ async function loadDelivery() {
           <div class="row"><span>📞 ${o.phone}</span></div>
           <div class="row"><span>📍 ${o.address}</span></div>
           <div class="items">🛒 ${(o.items || []).map(i => i.name).join(', ')}</div>
-          <div class="row" style="margin-top:6px">
-            <span style="font-size:11px;opacity:0.7">${o.order_id}</span>
-            <a href="https://wa.me/${String(o.phone).replace(/\D/g, '')}" target="_blank" style="color:#66bb6a;font-size:12px">Message →</a>
-          </div>
         </div>`).join('')}`;
   };
-
-  document.getElementById('deliveryList').innerHTML =
-    (morning.length || evening.length || other.length)
-      ? renderGroup('🌅 Morning', morning) + renderGroup('🌆 Evening', evening) + renderGroup('🕐 Other', other)
-      : '<p style="text-align:center;opacity:0.6;padding:40px">No orders today yet.</p>';
+  const el = document.getElementById('deliveryList');
+  if (!el) return;
+  el.innerHTML = (morning.length || evening.length || other.length)
+    ? renderGroup('🌅 Morning', morning) + renderGroup('🌆 Evening', evening) + renderGroup('🕐 Other', other)
+    : '<p style="text-align:center;opacity:0.6;padding:40px">No orders today.</p>';
 }
 
 /* ══════ PRODUCTS ══════ */
 async function loadProducts() {
   const { data } = await db.from('products').select('*').order('id');
-  document.getElementById('productsTable').innerHTML = `
+  const el = document.getElementById('productsTable');
+  if (!el) return;
+  el.innerHTML = `
     <tr><th>Image</th><th>Name</th><th>Price</th><th>Stock</th><th>Active</th><th>Upload</th><th></th></tr>
     ${(data || []).map(p => `
       <tr>
@@ -323,7 +375,6 @@ async function addProduct() {
 }
 
 async function updateProduct(id, field, value) { await db.from('products').update({ [field]: value }).eq('id', id); }
-
 async function deleteProduct(id) {
   if (confirm('Delete?')) { await db.from('products').delete().eq('id', id); loadProducts(); }
 }
@@ -331,7 +382,9 @@ async function deleteProduct(id) {
 /* ══════ COUPONS ══════ */
 async function loadCoupons() {
   const { data } = await db.from('coupons').select('*').order('id', { ascending: false });
-  document.getElementById('couponsTable').innerHTML = `
+  const el = document.getElementById('couponsTable');
+  if (!el) return;
+  el.innerHTML = `
     <tr><th>Code</th><th>Type</th><th>Value</th><th>Min</th><th>Used</th><th>Active</th><th></th></tr>
     ${(data || []).map(c => `
       <tr>
@@ -366,15 +419,13 @@ async function deleteCoupon(id) {
 async function loadAnalytics() {
   const { data } = await db.from('orders').select('*');
   const orders = data || [];
-  const totalOrders = orders.length;
-  const revenue = orders.filter(o => o.payment_status === 'Paid').reduce((s, o) => s + Number(o.total || 0), 0);
-  const pending = orders.filter(o => o.status === 'Pending').length;
-
-  document.getElementById('stats').innerHTML = `
-    <div class="stat"><h3>${totalOrders}</h3><p>Orders</p></div>
-    <div class="stat"><h3>₹${revenue}</h3><p>Revenue</p></div>
-    <div class="stat"><h3>${pending}</h3><p>Pending</p></div>`;
-
+  const el = document.getElementById('stats');
+  const chartEl = document.getElementById('chart');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="stat"><h3>${orders.length}</h3><p>Orders</p></div>
+    <div class="stat"><h3>₹${orders.filter(o => o.payment_status === 'Paid').reduce((s, o) => s + Number(o.total || 0), 0)}</h3><p>Revenue</p></div>
+    <div class="stat"><h3>${orders.filter(o => o.status === 'Pending').length}</h3><p>Pending</p></div>`;
   const days = [...Array(7)].map((_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
@@ -383,7 +434,7 @@ async function loadAnalytics() {
     return { label: d.toLocaleDateString('en', { weekday: 'short' }), count };
   });
   const max = Math.max(...days.map(d => d.count), 1);
-  document.getElementById('chart').innerHTML = days.map(d => `
+  if (chartEl) chartEl.innerHTML = days.map(d => `
     <div class="bar-wrap">
       <div class="bar" style="height:${(d.count / max) * 100}%"></div>
       <span>${d.label}</span>
