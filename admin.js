@@ -4,9 +4,8 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* ══════ DEVICE LOCK ══════ */
 const DEVICE_KEY_STORAGE = 'ssdf_device_lock_v2';
-const OWNER_DEVICE_KEY = 'SSDF-OWNER-2026-1629-AMMANANNA@143-PRIVATE';
+const OWNER_DEVICE_KEY = 'YOUR_SECRET_HERE';
 
-/* Simple fallback fingerprint */
 function getSimpleFingerprint() {
   const parts = [
     navigator.userAgent,
@@ -24,7 +23,6 @@ function getSimpleFingerprint() {
   return Math.abs(hash).toString(16).padStart(16, '0');
 }
 
-/* Try crypto, fallback to simple */
 async function getDeviceFingerprint() {
   try {
     const parts = [
@@ -43,7 +41,6 @@ async function getDeviceFingerprint() {
   return getSimpleFingerprint();
 }
 
-/* Main boot */
 async function bootAdmin() {
   const loadingEl = document.getElementById('loadingScreen');
   const deniedEl = document.getElementById('accessDenied');
@@ -53,7 +50,6 @@ async function bootAdmin() {
     const urlParams = new URLSearchParams(location.search);
     const regKey = urlParams.get('register');
 
-    // Register this device
     if (regKey === OWNER_DEVICE_KEY) {
       const fp = await getDeviceFingerprint();
       localStorage.setItem(DEVICE_KEY_STORAGE, fp);
@@ -67,21 +63,7 @@ async function bootAdmin() {
 
     if (!saved) {
       if (loadingEl) loadingEl.classList.add('hide');
-      if (deniedEl) {
-        deniedEl.classList.add('show');
-        deniedEl.innerHTML = `
-          <div>
-            <h1>🔒</h1>
-            <h2>Not Registered</h2>
-            <p style="margin-top:12px">This admin panel is restricted to the owner's device.</p>
-            <div style="background:rgba(255,213,79,0.15);border-left:4px solid #ffd54f;padding:16px;border-radius:10px;margin-top:24px;text-align:left;font-size:13px;max-width:340px">
-              <b>Owner setup:</b><br>
-              1. Open the register URL on your phone<br>
-              2. Or contact farm owner
-            </div>
-            <p style="font-size:11px;opacity:0.5;margin-top:30px">🐄 Sri Srinivasa Dairy Farm</p>
-          </div>`;
-      }
+      if (deniedEl) deniedEl.classList.add('show');
       return;
     }
 
@@ -96,16 +78,7 @@ async function bootAdmin() {
   } catch (err) {
     console.error('Boot error:', err);
     if (loadingEl) loadingEl.classList.add('hide');
-    if (deniedEl) {
-      deniedEl.classList.add('show');
-      deniedEl.innerHTML = `
-        <div>
-          <h1>⚠️</h1>
-          <h2>Error</h2>
-          <p style="margin-top:12px;font-size:13px;opacity:0.8">${err.message || 'Something went wrong'}</p>
-          <button onclick="location.reload()" style="margin-top:20px;padding:12px 24px;background:#2e7d32;color:#fff;border:none;border-radius:10px;font-weight:bold;cursor:pointer">🔄 Retry</button>
-        </div>`;
-    }
+    if (deniedEl) deniedEl.classList.add('show');
   }
 }
 
@@ -135,9 +108,7 @@ function initAdmin() {
   }
   setTimeout(() => {
     const loadingEl = document.getElementById('loadingScreen');
-    if (loadingEl && !loadingEl.classList.contains('hide')) {
-      bootAdmin();
-    }
+    if (loadingEl && !loadingEl.classList.contains('hide')) bootAdmin();
   }, 6000);
 }
 
@@ -249,7 +220,6 @@ function addResetButton() {
   document.body.appendChild(btn);
 }
 
-/* ══════ ORDERS ══════ */
 async function loadOrders() {
   const { data } = await db.from('orders').select('*').order('created_at', { ascending: false });
   const statuses = ['Pending', 'Confirmed', 'Shipped', 'Delivered', 'Cancelled'];
@@ -318,7 +288,6 @@ Sri Srinivasa Dairy Farm`;
   window.location.href = `mailto:${data.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
-/* ══════ DELIVERY ══════ */
 async function loadDelivery() {
   const today = new Date().toISOString().slice(0, 10);
   const { data } = await db.from('orders').select('*')
@@ -346,7 +315,6 @@ async function loadDelivery() {
     : '<p style="text-align:center;opacity:0.6;padding:40px">No orders today.</p>';
 }
 
-/* ══════ PRODUCTS ══════ */
 async function loadProducts() {
   const { data } = await db.from('products').select('*').order('id');
   const el = document.getElementById('productsTable');
@@ -379,7 +347,6 @@ async function deleteProduct(id) {
   if (confirm('Delete?')) { await db.from('products').delete().eq('id', id); loadProducts(); }
 }
 
-/* ══════ COUPONS ══════ */
 async function loadCoupons() {
   const { data } = await db.from('coupons').select('*').order('id', { ascending: false });
   const el = document.getElementById('couponsTable');
@@ -415,7 +382,6 @@ async function deleteCoupon(id) {
   if (confirm('Delete coupon?')) { await db.from('coupons').delete().eq('id', id); loadCoupons(); }
 }
 
-/* ══════ ANALYTICS ══════ */
 async function loadAnalytics() {
   const { data } = await db.from('orders').select('*');
   const orders = data || [];
@@ -441,7 +407,6 @@ async function loadAnalytics() {
     </div>`).join('');
 }
 
-/* ══════ IMAGE UPLOAD ══════ */
 async function uploadImage(id, file) {
   if (!file) return;
   const path = `products/${id}_${Date.now()}_${file.name}`;
@@ -450,4 +415,4 @@ async function uploadImage(id, file) {
   const { data: { publicUrl } } = db.storage.from('product-images').getPublicUrl(path);
   await db.from('products').update({ image_url: publicUrl }).eq('id', id);
   loadProducts();
-}
+  }
