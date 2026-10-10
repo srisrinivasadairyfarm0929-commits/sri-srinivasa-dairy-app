@@ -220,6 +220,7 @@ function addResetButton() {
   document.body.appendChild(btn);
 }
 
+/* ══════ ORDERS ══════ */
 async function loadOrders() {
   const { data } = await db.from('orders').select('*').order('created_at', { ascending: false });
   const statuses = ['Pending', 'Confirmed', 'Shipped', 'Delivered', 'Cancelled'];
@@ -249,6 +250,7 @@ async function loadOrders() {
         <td>
           <button onclick="sendWhatsApp('${o.order_id}')" style="background:none;border:none;font-size:18px;cursor:pointer">📲</button>
           <button onclick="sendEmail('${o.order_id}')" style="background:none;border:none;font-size:18px;cursor:pointer">✉️</button>
+          <button onclick="deleteOrder('${o.order_id}')" style="background:none;border:none;font-size:18px;cursor:pointer">🗑️</button>
         </td>
       </tr>`).join('')}`;
 }
@@ -256,6 +258,79 @@ async function loadOrders() {
 async function updateStatus(id, status) { await db.from('orders').update({ status }).eq('order_id', id); }
 async function updatePayment(id, payment_status) { await db.from('orders').update({ payment_status }).eq('order_id', id); }
 
+/* ══════ DELETE SINGLE ORDER ══════ */
+async function deleteOrder(orderId) {
+  const confirm1 = confirm(`Delete order ${orderId}?\n\nThis cannot be undone.`);
+  if (!confirm1) return;
+  const confirm2 = confirm('Are you ABSOLUTELY sure? This removes it permanently.');
+  if (!confirm2) return;
+
+  try {
+    const { error } = await db.from('orders').delete().eq('order_id', orderId);
+    if (error) { alert('Failed to delete: ' + error.message); return; }
+
+    if (navigator.vibrate) { try { navigator.vibrate(200); } catch (e) {} }
+
+    const buttons = document.querySelectorAll(`button[onclick*="${orderId}"]`);
+    buttons.forEach(btn => {
+      const row = btn.closest('tr');
+      if (row) {
+        row.style.transition = 'all 0.4s';
+        row.style.opacity = '0';
+        row.style.transform = 'translateX(-100%)';
+        setTimeout(() => row.remove(), 400);
+      }
+    });
+
+    const note = document.createElement('div');
+    note.textContent = '✅ Order deleted';
+    note.style.cssText = `
+      position:fixed; bottom:100px; left:50%; transform:translateX(-50%);
+      background:linear-gradient(135deg, #2e7d32, #66bb6a);
+      color:#fff; padding:12px 24px; border-radius:30px;
+      font-weight:bold; font-size:14px; z-index:99999;
+      box-shadow:0 6px 20px rgba(0,0,0,0.4);
+    `;
+    document.body.appendChild(note);
+    setTimeout(() => note.remove(), 2000);
+
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
+/* ══════ BULK DELETE OLD ORDERS ══════ */
+async function deleteOldOrders() {
+  const days = prompt('Delete orders older than how many days?\n\nExample: 90 (deletes orders older than 90 days)', '90');
+  if (!days) return;
+
+  const numDays = Number(days);
+  if (!numDays || numDays < 1) { alert('Enter a valid number'); return; }
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - numDays);
+
+  const confirmMsg = confirm(
+    `Delete ALL orders older than ${numDays} days?\n\n` +
+    `Cutoff date: ${cutoff.toLocaleDateString()}\n\n` +
+    `This cannot be undone!`
+  );
+  if (!confirmMsg) return;
+
+  const confirm2 = confirm('Are you ABSOLUTELY sure? This will delete ALL those orders permanently.');
+  if (!confirm2) return;
+
+  try {
+    const { error } = await db
+      .from('orders')
+      .delete()
+      .lt('created_at', cutoff.toISOString());
+
+    if (error) { alert('Failed: ' + error.message); return; }
+    alert(`✅ Deleted all orders older than ${numDays} days.`);
+    loadOrders();
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
+/* ══════ WHATSAPP + EMAIL ══════ */
 async function sendWhatsApp(orderId) {
   const { data } = await db.from('orders').select('*').eq('order_id', orderId).single();
   if (!data) return;
@@ -288,6 +363,7 @@ Sri Srinivasa Dairy Farm`;
   window.location.href = `mailto:${data.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
+/* ══════ DELIVERY ══════ */
 async function loadDelivery() {
   const today = new Date().toISOString().slice(0, 10);
   const { data } = await db.from('orders').select('*')
@@ -315,6 +391,7 @@ async function loadDelivery() {
     : '<p style="text-align:center;opacity:0.6;padding:40px">No orders today.</p>';
 }
 
+/* ══════ PRODUCTS ══════ */
 async function loadProducts() {
   const { data } = await db.from('products').select('*').order('id');
   const el = document.getElementById('productsTable');
@@ -347,6 +424,7 @@ async function deleteProduct(id) {
   if (confirm('Delete?')) { await db.from('products').delete().eq('id', id); loadProducts(); }
 }
 
+/* ══════ COUPONS ══════ */
 async function loadCoupons() {
   const { data } = await db.from('coupons').select('*').order('id', { ascending: false });
   const el = document.getElementById('couponsTable');
@@ -382,6 +460,7 @@ async function deleteCoupon(id) {
   if (confirm('Delete coupon?')) { await db.from('coupons').delete().eq('id', id); loadCoupons(); }
 }
 
+/* ══════ ANALYTICS ══════ */
 async function loadAnalytics() {
   const { data } = await db.from('orders').select('*');
   const orders = data || [];
@@ -407,6 +486,7 @@ async function loadAnalytics() {
     </div>`).join('');
 }
 
+/* ══════ IMAGE UPLOAD ══════ */
 async function uploadImage(id, file) {
   if (!file) return;
   const path = `products/${id}_${Date.now()}_${file.name}`;
@@ -415,4 +495,4 @@ async function uploadImage(id, file) {
   const { data: { publicUrl } } = db.storage.from('product-images').getPublicUrl(path);
   await db.from('products').update({ image_url: publicUrl }).eq('id', id);
   loadProducts();
-  }
+}
