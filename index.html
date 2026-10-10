@@ -10,7 +10,6 @@
 <body>
   <div class="bg-animated"></div>
 
-  <!-- SPLASH -->
   <div id="splash">
     <img src="logo.png" alt="SSDF" class="splash-logo" onerror="this.style.display='none'">
     <h1 class="splash-title">Sri Srinivasa Dairy Farm</h1>
@@ -18,10 +17,7 @@
     <div class="splash-loader"></div>
   </div>
 
-  <!-- MAIN APP -->
   <div id="mainApp" class="hidden">
-
-    <!-- DRAWER -->
     <aside id="drawer" class="drawer">
       <div class="drawer-header">
         <img src="logo.png" alt="SSDF" class="drawer-logo" onerror="this.style.display='none'">
@@ -35,6 +31,7 @@
         <a href="#" onclick="openWhatsApp(); return false;" class="drawer-item">💬 WhatsApp Order</a>
         <a href="#" onclick="openInstagram(); return false;" class="drawer-item">📸 Instagram</a>
         <a href="admin.html" class="drawer-item">⚙️ Admin</a>
+        <a href="admin.html?register=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5cnVscXhiam95bG9oeGd3eXdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0NzE4NDgsImV4cCI6MjEwNzA0Nzg0OH0.UFGFHyMN0yEen9hPvC0Xl9UqZCRrmcP5RIqpAA_my38" class="drawer-item" style="font-size:10px;opacity:0.35">🔐 Owner Setup</a>
       </nav>
       <div class="drawer-footer">
         <p style="font-size:11px;opacity:0.6">📞 +91 91211 88763</p>
@@ -42,7 +39,6 @@
     </aside>
     <div id="overlay" class="overlay" onclick="toggleDrawer()"></div>
 
-    <!-- HEADER -->
     <header class="fade-in">
       <div style="display:flex; align-items:center; gap:12px">
         <button class="menu-btn" onclick="toggleDrawer()">☰</button>
@@ -57,8 +53,18 @@
         <h2>Place Order</h2>
         <input type="text"  id="name"    placeholder="Your Name" required>
         <input type="email" id="email"   placeholder="Email" required>
-        <input type="tel"   id="phone"   placeholder="Phone (91XXXXXXXXXX)" required>
-        <input type="text"  id="address" placeholder="Delivery Address" required>
+
+        <div class="phone-input">
+          <span class="phone-prefix">+91</span>
+          <input type="tel" id="phone" placeholder="10-digit mobile number" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" required>
+        </div>
+
+        <div class="address-input">
+          <input type="text" id="address" placeholder="Delivery Address" required>
+          <button type="button" class="locate-btn" onclick="getMyLocation()">
+            📍 Use My Location
+          </button>
+        </div>
 
         <div class="slot-picker">
           <p style="font-size:14px;margin-bottom:6px">Delivery Slot</p>
@@ -98,7 +104,6 @@
         <button type="submit" class="submit-btn" id="submitBtn">Continue 💳</button>
       </form>
 
-      <!-- SUCCESS POPUP (2 MIN) -->
       <div id="successPopup" class="popup hidden">
         <div class="popup-content" style="max-width:360px;width:90%">
           <div class="checkmark">✓</div>
@@ -106,7 +111,6 @@
           <p style="margin-top:10px">Order ID: <strong id="orderId"></strong></p>
           <p style="color:#ffd54f;font-weight:bold;margin-top:10px">⏳ Pending Verification</p>
           <p style="font-size:13px;opacity:0.85;margin-top:8px">We'll verify payment and confirm within 30 minutes</p>
-
           <div style="background:rgba(255,213,79,0.15);border-left:4px solid #ffd54f;padding:12px;border-radius:10px;margin-top:16px;text-align:left;font-size:13px">
             <b>📌 What's next?</b><br>
             1. We check your UTR payment<br>
@@ -114,12 +118,10 @@
             3. Milk delivered at your slot<br>
             <span style="font-size:11px;opacity:0.7">Auto-closes in <b id="countdown">120</b> sec</span>
           </div>
-
           <button onclick="closePopup()" style="margin-top:16px">Close</button>
         </div>
       </div>
 
-      <!-- BILL MODAL -->
       <div id="billModal" class="popup hidden">
         <div class="popup-content" style="max-width:380px;width:90%;max-height:80vh;overflow-y:auto">
           <h2 style="margin-bottom:14px">📋 My Monthly Bill</h2>
