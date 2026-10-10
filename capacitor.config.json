@@ -4,6 +4,8 @@
   "webDir": "www",
   "bundledWebRuntime": false,
   "server": {
+    "url": "https://srisrinivasadairyfarm.netlify.app",
+    "cleartext": true,
     "androidScheme": "https"
   },
   "android": {
@@ -15,9 +17,7 @@
       "launchAutoHide": true,
       "backgroundColor": "#2e7d32",
       "androidSplashResourceName": "splash",
-      "showSpinner": false,
-      "splashFullScreen": true,
-      "splashImmersive": true
+      "showSpinner": false
     },
     "StatusBar": {
       "style": "DARK",
