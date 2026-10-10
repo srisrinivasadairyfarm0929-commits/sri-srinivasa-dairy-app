@@ -4,7 +4,7 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* ══════ DEVICE LOCK ══════ */
 const DEVICE_KEY_STORAGE = 'ssdf_device_lock_v2';
-const OWNER_DEVICE_KEY = 'YOUR_SECRET_HERE';
+const OWNER_DEVICE_KEY = 'SSDF-OWNER-2026-1629-AMMANANNA@143-PRIVATE';
 
 function getSimpleFingerprint() {
   const parts = [
