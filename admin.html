@@ -2,155 +2,150 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Admin — SSDF</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2e7d32">
+  <title>Sri Srinivasa Dairy Farm</title>
   <link rel="stylesheet" href="style.css">
-  <style>
-    table { width:100%; border-collapse:collapse; color:#fff; margin-top:16px; font-size:12px; }
-    th,td { padding:8px; border-bottom:1px solid rgba(255,255,255,.1); text-align:left; }
-    th { background:rgba(255,255,255,.08); }
-    input,select { padding:6px; border-radius:6px; border:none; background:#222; color:#fff; font-size:12px; }
-    .tabs { display:flex; gap:6px; margin-bottom:20px; flex-wrap:wrap; }
-    .tab { padding:9px 14px; background:rgba(255,255,255,.1); border-radius:10px; cursor:pointer; font-size:12px; transition:0.3s; }
-    .tab.active { background:linear-gradient(135deg,#2e7d32,#66bb6a); }
-    .stats { display:flex; gap:10px; margin-top:20px; flex-wrap:wrap; }
-    .stat { flex:1; min-width:100px; background:rgba(255,255,255,.08); padding:14px; border-radius:14px; text-align:center; }
-    .stat h3 { font-size:22px; color:#ffd54f; }
-    .stat p { font-size:11px; opacity:0.7; }
-    .chart { display:flex; align-items:flex-end; gap:8px; height:160px; margin-top:20px; padding:16px; background:rgba(255,255,255,.05); border-radius:16px; }
-    .bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; }
-    .bar { width:100%; background:linear-gradient(180deg,#66bb6a,#2e7d32); border-radius:8px 8px 0 0; min-height:4px; }
-    .bar-wrap span { font-size:10px; margin-top:4px; }
-    .glass { max-width:1100px; }
-    .hidden { display:none; }
-    .slot-header { background:rgba(102,187,106,0.2); padding:10px; border-radius:10px; margin:16px 0 8px 0; font-weight:bold; font-size:14px; }
-    .delivery-card { background:rgba(255,255,255,0.06); padding:12px; border-radius:10px; margin:6px 0; font-size:13px; }
-    .delivery-card .row { display:flex; justify-content:space-between; padding:3px 0; }
-    .delivery-card .items { font-size:12px; opacity:0.8; margin-top:6px; }
-
-    #accessDenied {
-      display:none;
-      position:fixed; inset:0;
-      background:linear-gradient(135deg, #0f0c29, #1b5e20);
-      color:#fff;
-      align-items:center; justify-content:center;
-      text-align:center;
-      padding:30px;
-      z-index:10000;
-    }
-    #accessDenied.show { display:flex; }
-    #accessDenied h1 { font-size:80px; margin-bottom:20px; }
-    #accessDenied h2 { font-size:26px; margin-bottom:12px; }
-    #accessDenied p { opacity:0.7; line-height:1.6; }
-
-    #loadingScreen {
-      position:fixed; inset:0;
-      background:linear-gradient(135deg, #1b5e20, #2e7d32);
-      display:flex; flex-direction:column;
-      align-items:center; justify-content:center;
-      color:#fff;
-      z-index:9999;
-    }
-    #loadingScreen .spinner {
-      width:60px; height:60px;
-      border:4px solid rgba(255,255,255,0.2);
-      border-top-color:#ffd54f;
-      border-radius:50%;
-      animation: spin 0.9s linear infinite;
-      margin-bottom:20px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    #loadingScreen.hide { display:none; }
-  </style>
 </head>
 <body>
   <div class="bg-animated"></div>
 
-  <div id="loadingScreen">
-    <div class="spinner"></div>
-    <p style="font-size:14px;opacity:0.85">Verifying device access...</p>
+  <div id="splash">
+    <img src="logo.png" alt="SSDF" class="splash-logo" onerror="this.style.display='none'">
+    <h1 class="splash-title">Sri Srinivasa Dairy Farm</h1>
+    <p class="splash-sub">Pure Milk • Healthy Life</p>
+    <div class="splash-loader"></div>
   </div>
 
-  <div id="accessDenied">
-    <div>
-      <h1>🔒</h1>
-      <h2>Access Denied</h2>
-      <p>This admin panel is restricted to the owner's device.</p>
-      <p style="font-size:12px;opacity:0.5;margin-top:30px">🐄 Sri Srinivasa Dairy Farm</p>
-    </div>
-  </div>
-
-  <div id="mainContent" style="display:none">
-    <header class="fade-in" style="display:flex;justify-content:space-between;align-items:center">
-      <h1>⚙️ Admin — SSDF</h1>
-      <div>
-        <span style="font-size:11px;opacity:0.6;margin-right:8px" id="deviceLabel"></span>
-        <a href="index.html" class="btn-track">← Shop</a>
+  <div id="mainApp" class="hidden">
+    <aside id="drawer" class="drawer">
+      <div class="drawer-header">
+        <img src="logo.png" alt="SSDF" class="drawer-logo" onerror="this.style.display='none'">
+        <h3>Sri Srinivasa Dairy Farm</h3>
+        <p style="font-size:12px;opacity:0.7">Pure Milk • Healthy Life</p>
       </div>
+      <nav class="drawer-menu">
+        <a href="index.html" class="drawer-item">🏠 Home</a>
+        <a href="track.html" class="drawer-item">📦 Track Order</a>
+        <a href="contact.html" class="drawer-item">📞 Contact Us</a>
+        <a href="#" onclick="openWhatsApp(); return false;" class="drawer-item">💬 WhatsApp Order</a>
+        <a href="#" onclick="openInstagram(); return false;" class="drawer-item">📸 Instagram</a>
+        <a href="admin.html" class="drawer-item">⚙️ Admin</a>
+      </nav>
+      <div class="drawer-footer">
+        <p style="font-size:11px;opacity:0.6">📞 +91 91211 88763</p>
+      </div>
+    </aside>
+    <div id="overlay" class="overlay" onclick="toggleDrawer()"></div>
+
+    <header class="fade-in">
+      <div style="display:flex; align-items:center; gap:12px">
+        <button class="menu-btn" onclick="toggleDrawer()">☰</button>
+        <img src="logo.png" alt="SSDF" class="header-logo" onerror="this.style.display='none'">
+        <h1>Sri Srinivasa Dairy Farm</h1>
+      </div>
+      <div><a href="track.html" class="btn-track">Track</a></div>
     </header>
 
     <main>
-      <div id="panel" class="glass">
-        <div class="tabs">
-          <div class="tab active" onclick="tab('orders',this)">📦 Orders</div>
-          <div class="tab" onclick="tab('delivery',this)">🚚 Delivery</div>
-          <div class="tab" onclick="tab('products',this)">🛒 Products</div>
-          <div class="tab" onclick="tab('coupons',this)">🎟️ Coupons</div>
-          <div class="tab" onclick="tab('analytics',this)">📊 Analytics</div>
+      <form id="orderForm" class="glass">
+        <h2>Place Order</h2>
+        <input type="text"  id="name"    placeholder="Your Name" required>
+        <input type="email" id="email"   placeholder="Email" required>
+
+        <div class="phone-input">
+          <span class="phone-prefix">+91</span>
+          <input type="tel" id="phone" placeholder="10-digit mobile number" maxlength="10" inputmode="numeric" pattern="[0-9]{10}" required>
         </div>
 
-        <div id="orders">
-          <button class="submit-btn" onclick="loadOrders()" style="max-width:160px">🔄 Refresh</button>
-          <div style="overflow-x:auto"><table id="ordersTable"></table></div>
+        <div class="address-input">
+          <input type="text" id="address" placeholder="Delivery Address" required>
+          <button type="button" class="locate-btn" onclick="getMyLocation()">
+            📍 Use My Location
+          </button>
         </div>
 
-        <div id="delivery" class="hidden">
-          <button class="submit-btn" onclick="loadDelivery()" style="max-width:180px">🔄 Refresh Today</button>
-          <div id="deliveryList" style="margin-top:16px"></div>
+        <div class="slot-picker">
+          <p style="font-size:14px;margin-bottom:6px">Delivery Slot</p>
+          <label class="slot-option"><input type="radio" name="slot" value="Morning (6-8 AM)" checked><span>🌅 Morning (6-8 AM)</span></label>
+          <label class="slot-option"><input type="radio" name="slot" value="Evening (5-7 PM)"><span>🌆 Evening (5-7 PM)</span></label>
         </div>
 
-        <div id="products" class="hidden">
-          <h3>Add Product</h3>
-          <input id="pName" placeholder="Name">
-          <input id="pPrice" type="number" placeholder="Price">
-          <input id="pStock" type="number" placeholder="Stock" value="100">
-          <button class="submit-btn" onclick="addProduct()" style="max-width:160px">+ Add</button>
-          <table id="productsTable"></table>
+        <div style="display:flex; gap:10px; margin:12px 0">
+          <button type="button" class="quick-btn" onclick="repeatLastOrder()">🔁 Repeat Last Order</button>
+          <button type="button" class="quick-btn" onclick="showMonthlyBill()">📋 My Monthly Bill</button>
         </div>
 
-        <div id="coupons" class="hidden">
-          <h3>Add Coupon</h3>
-          <input id="cCode" placeholder="CODE">
-          <select id="cType"><option value="percent">%</option><option value="flat">₹</option></select>
-          <input id="cValue" type="number" placeholder="Value">
-          <input id="cMin" type="number" placeholder="Min order" value="0">
-          <input id="cLimit" type="number" placeholder="Limit" value="100">
-          <button class="submit-btn" onclick="addCoupon()" style="max-width:160px">+ Add</button>
-          <table id="couponsTable"></table>
+        <div class="items" id="items"></div>
+        <div id="cart" class="cart"></div>
+
+        <div class="coupon-row">
+          <input type="text" id="couponCode" placeholder="Coupon Code">
+          <button type="button" class="add-btn" onclick="applyCoupon()">Apply</button>
+        </div>
+        <div id="couponMsg" style="font-size:13px;margin-top:6px"></div>
+
+        <div class="total">Total: ₹<span id="total">0</span>
+          <span id="discountLine" style="color:#ffd54f;font-size:14px"></span>
         </div>
 
-        <div id="analytics" class="hidden">
-          <div class="stats" id="stats"></div>
-          <div class="chart" id="chart"></div>
+        <h3>Payment — UPI</h3>
+        <div id="paymentSection" class="payment hidden">
+          <p style="margin-bottom:12px">Pay ₹<strong id="payAmount">0</strong></p>
+          <a id="upiPayBtn" class="upi-btn" href="#">💳 Pay Now via UPI App</a>
+          <p style="font-size:12px;opacity:0.7;margin:10px 0">OR scan QR below</p>
+          <div id="qrcode"></div>
+          <p>UPI: <strong id="upiId">loading...</strong></p>
+          <input type="text" id="utr" placeholder="Enter UTR / Transaction ID">
+          <p style="font-size:11px;opacity:0.6;margin-top:6px">Open UPI app → history → copy UTR number</p>
+        </div>
+
+        <button type="submit" class="submit-btn" id="submitBtn">Continue 💳</button>
+      </form>
+
+      <div id="successPopup" class="popup hidden">
+        <div class="popup-content" style="max-width:360px;width:90%">
+          <div class="checkmark">✓</div>
+          <h2>Order Received!</h2>
+          <p style="margin-top:10px">Order ID: <strong id="orderId"></strong></p>
+          <p style="color:#ffd54f;font-weight:bold;margin-top:10px">⏳ Pending Verification</p>
+          <p style="font-size:13px;opacity:0.85;margin-top:8px">We'll verify payment and confirm within 30 minutes</p>
+          <div style="background:rgba(255,213,79,0.15);border-left:4px solid #ffd54f;padding:12px;border-radius:10px;margin-top:16px;text-align:left;font-size:13px">
+            <b>📌 What's next?</b><br>
+            1. We check your UTR payment<br>
+            2. Order confirmed<br>
+            3. Milk delivered at your slot<br>
+            <span style="font-size:11px;opacity:0.7">Auto-closes in <b id="countdown">120</b> sec</span>
+          </div>
+          <button onclick="closePopup()" style="margin-top:16px">Close</button>
+        </div>
+      </div>
+
+      <div id="billModal" class="popup hidden">
+        <div class="popup-content" style="max-width:380px;width:90%;max-height:80vh;overflow-y:auto">
+          <h2 style="margin-bottom:14px">📋 My Monthly Bill</h2>
+          <div id="billContent" style="text-align:left;font-size:13px"></div>
+          <button onclick="closeBill()" style="margin-top:16px">Close</button>
         </div>
       </div>
     </main>
+
+    <footer>
+      <p>🐄 Sri Srinivasa Dairy Farm</p>
+      <p>📞 <a href="tel:+919121188763">+91 91211 88763</a> ·
+         ✉️ <a href="mailto:srisrinivasadairyfarm0929@gmail.com">srisrinivasadairyfarm0929@gmail.com</a></p>
+      <p style="margin-top:8px">
+        <a href="contact.html">Contact</a> ·
+        <a href="privacy.html">Privacy</a> ·
+        <a href="terms.html">Terms</a> ·
+        <a href="refund.html">Refunds</a>
+      </p>
+    </footer>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="admin.js"></script>
-  <script>
-    function tab(name, el) {
-      document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
-      el.classList.add('active');
-      ['orders','delivery','products','coupons','analytics'].forEach(t => document.getElementById(t).classList.add('hidden'));
-      document.getElementById(name).classList.remove('hidden');
-      if (name === 'orders') loadOrders();
-      if (name === 'delivery') loadDelivery();
-      if (name === 'products') loadProducts();
-      if (name === 'coupons') loadCoupons();
-      if (name === 'analytics') loadAnalytics();
-    }
-  </script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1"></script>
+  <script src="script.js"></script>
 </body>
 </html>
