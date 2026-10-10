@@ -1,5 +1,5 @@
 const SUPABASE_URL = 'https://qyrulqxbjoylohxgwywo.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5cnVscXhiam95bG9oeGd3eXdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0NzE4NDgsImV4cCI6MjEwNzA0Nzg0OH0.UFGFHyMN0yEen9hPvC0Xl9UqZCRrmcP5RIqpAA_my38';
+const SUPABASE_KEY = 'PASTE_YOUR_ANON_KEY_HERE';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let cart = [], upiId = '', step = 1;
@@ -14,13 +14,13 @@ const sounds = {
 };
 const play = n => { try { sounds[n].currentTime = 0; sounds[n].play().catch(()=>{}); } catch(e){} };
 
-/* Global click sound for every button */
+/* Global click sound */
 document.addEventListener('click', (e) => {
-  if (e.target.closest('button, a, .qty-pill, .quick-btn, input[type=radio], input[type=checkbox]')) {
+  if (e.target.closest('button, a, .qty-pill, .quick-btn, input[type=radio]')) {
     try {
-      const clickAudio = new Audio('https://actions.google.com/sounds/v1/cart/button_click.ogg');
-      clickAudio.volume = 0.35;
-      clickAudio.play().catch(()=>{});
+      const c = new Audio('https://actions.google.com/sounds/v1/cart/button_click.ogg');
+      c.volume = 0.35;
+      c.play().catch(()=>{});
     } catch (err) {}
   }
 }, true);
@@ -45,9 +45,22 @@ function playNatureSound() {
   }, 20000);
 }
 
-/* ══════ BOOT ══════ */
 window.addEventListener('load', () => {
   playNatureSound();
+
+  // Phone input — digits only
+  const phoneInput = document.getElementById('phone');
+  if (phoneInput) {
+    phoneInput.addEventListener('input', (e) => {
+      e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
+    });
+  }
+
+  // Prefill address if previously saved
+  const savedAddress = localStorage.getItem('lastAddress');
+  const addr = document.getElementById('address');
+  if (addr && savedAddress && !addr.value) addr.value = savedAddress;
+
   const splash = document.getElementById('splash');
   const main = document.getElementById('mainApp');
   setTimeout(() => {
@@ -274,10 +287,127 @@ function closePopup() {
   countdownInterval = null;
 }
 
+/* ══════ GET MY LOCATION ══════ */
+async function getMyLocation() {
+  const btn = document.querySelector('.locate-btn');
+  const addressField = document.getElementById('address');
+
+  if (!navigator.geolocation) {
+    play('error');
+    alert('Your browser does not support location. Please enter address manually.');
+    return;
+  }
+
+  btn.classList.add('loading');
+  btn.classList.remove('success', 'error');
+  btn.innerHTML = '⏳ Getting location...';
+
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`,
+          { headers: { 'Accept-Language': 'en' } }
+        );
+        const data = await res.json();
+
+        if (data && data.address) {
+          const a = data.address;
+          const parts = [
+            a.house_number,
+            a.road,
+            a.neighbourhood || a.suburb || a.village,
+            a.city || a.town || a.county,
+            a.state,
+            a.postcode
+          ].filter(Boolean);
+          const fullAddress = parts.join(', ');
+
+          addressField.value = fullAddress || data.display_name;
+
+          btn.classList.remove('loading');
+          btn.classList.add('success');
+          btn.innerHTML = '✅ Location added';
+
+          play('success');
+
+          localStorage.setItem('lastLocation', JSON.stringify({ lat, lon, address: fullAddress }));
+          localStorage.setItem('lastAddress', fullAddress);
+
+          showMapPreview(lat, lon);
+
+          setTimeout(() => {
+            btn.classList.remove('success');
+            btn.innerHTML = '📍 Use My Location';
+          }, 3000);
+        } else {
+          throw new Error('No address found');
+        }
+      } catch (err) {
+        console.error('Reverse geocoding failed:', err);
+        addressField.value = `Location: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+        btn.classList.remove('loading');
+        btn.classList.add('success');
+        btn.innerHTML = '✅ Coordinates added';
+        setTimeout(() => {
+          btn.classList.remove('success');
+          btn.innerHTML = '📍 Use My Location';
+        }, 3000);
+      }
+    },
+    (error) => {
+      console.warn('Location error:', error);
+      btn.classList.remove('loading');
+      btn.classList.add('error');
+      btn.innerHTML = '❌ Location blocked';
+      play('error');
+
+      let msg = 'Could not get your location.';
+      if (error.code === 1) msg = 'Location permission denied. Please allow location in Chrome settings.';
+      else if (error.code === 2) msg = 'Location unavailable. Try again or enter manually.';
+      else if (error.code === 3) msg = 'Location request timed out.';
+
+      alert(msg);
+
+      setTimeout(() => {
+        btn.classList.remove('error');
+        btn.innerHTML = '📍 Use My Location';
+      }, 3000);
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+}
+
+function showMapPreview(lat, lon) {
+  let mapEl = document.getElementById('mapPreview');
+  if (!mapEl) {
+    mapEl = document.createElement('iframe');
+    mapEl.id = 'mapPreview';
+    mapEl.setAttribute('frameborder', '0');
+    mapEl.setAttribute('scrolling', 'no');
+    mapEl.setAttribute('loading', 'lazy');
+    const addrWrap = document.querySelector('.address-input');
+    if (addrWrap) addrWrap.appendChild(mapEl);
+  }
+  const delta = 0.003;
+  const bbox = `${lon - delta},${lat - delta},${lon + delta},${lat + delta}`;
+  mapEl.src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lon}`;
+  mapEl.classList.add('show');
+}
+
 /* ══════ ORDER SUBMIT ══════ */
 document.getElementById('orderForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!cart.length) { play('error'); alert('Select at least one product'); return; }
+
+  // Build +91 phone
+  let rawPhone = document.getElementById('phone').value.trim().replace(/\D/g, '');
+  if (rawPhone.length > 10) rawPhone = rawPhone.slice(-10);
+  if (rawPhone.length !== 10) { play('error'); alert('Please enter a valid 10-digit mobile number'); return; }
+  const phoneWithCode = '+91' + rawPhone;
 
   const sub = cart.reduce((s, c) => s + c.price, 0);
   const total = Math.max(0, sub - discount);
@@ -306,7 +436,7 @@ document.getElementById('orderForm').addEventListener('submit', async (e) => {
     order_id: 'SSDF' + Date.now().toString().slice(-8),
     name: document.getElementById('name').value,
     email: document.getElementById('email').value,
-    phone: document.getElementById('phone').value,
+    phone: phoneWithCode,
     address: document.getElementById('address').value,
     items: cart,
     total,
@@ -327,9 +457,10 @@ document.getElementById('orderForm').addEventListener('submit', async (e) => {
   }
 
   localStorage.setItem('lastOrder', JSON.stringify({ items: order.items }));
+  localStorage.setItem('lastAddress', order.address);
 
   play('success');
-  confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
+  confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
   document.getElementById('orderId').textContent = order.order_id;
   openSuccessPopup();
 
@@ -346,7 +477,7 @@ document.getElementById('orderForm').addEventListener('submit', async (e) => {
 
 /* ══════ RIPPLE ══════ */
 document.addEventListener('click', (e) => {
-  const btn = e.target.closest('.submit-btn, .add-btn, .upi-btn, .qty-pill, .custom-qty-btn, .quick-btn');
+  const btn = e.target.closest('.submit-btn, .add-btn, .upi-btn, .qty-pill, .custom-qty-btn, .quick-btn, .locate-btn');
   if (!btn) return;
   const rect = btn.getBoundingClientRect();
   const ripple = document.createElement('span');
