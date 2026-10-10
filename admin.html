@@ -1,156 +1,498 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Admin — SSDF</title>
-  <link rel="stylesheet" href="style.css">
-  <style>
-    table { width:100%; border-collapse:collapse; color:#fff; margin-top:16px; font-size:12px; }
-    th,td { padding:8px; border-bottom:1px solid rgba(255,255,255,.1); text-align:left; }
-    th { background:rgba(255,255,255,.08); }
-    input,select { padding:6px; border-radius:6px; border:none; background:#222; color:#fff; font-size:12px; }
-    .tabs { display:flex; gap:6px; margin-bottom:20px; flex-wrap:wrap; }
-    .tab { padding:9px 14px; background:rgba(255,255,255,.1); border-radius:10px; cursor:pointer; font-size:12px; transition:0.3s; }
-    .tab.active { background:linear-gradient(135deg,#2e7d32,#66bb6a); }
-    .stats { display:flex; gap:10px; margin-top:20px; flex-wrap:wrap; }
-    .stat { flex:1; min-width:100px; background:rgba(255,255,255,.08); padding:14px; border-radius:14px; text-align:center; }
-    .stat h3 { font-size:22px; color:#ffd54f; }
-    .stat p { font-size:11px; opacity:0.7; }
-    .chart { display:flex; align-items:flex-end; gap:8px; height:160px; margin-top:20px; padding:16px; background:rgba(255,255,255,.05); border-radius:16px; }
-    .bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; }
-    .bar { width:100%; background:linear-gradient(180deg,#66bb6a,#2e7d32); border-radius:8px 8px 0 0; min-height:4px; }
-    .bar-wrap span { font-size:10px; margin-top:4px; }
-    .glass { max-width:1100px; }
-    .hidden { display:none; }
-    .slot-header { background:rgba(102,187,106,0.2); padding:10px; border-radius:10px; margin:16px 0 8px 0; font-weight:bold; font-size:14px; }
-    .delivery-card { background:rgba(255,255,255,0.06); padding:12px; border-radius:10px; margin:6px 0; font-size:13px; }
-    .delivery-card .row { display:flex; justify-content:space-between; padding:3px 0; }
-    .delivery-card .items { font-size:12px; opacity:0.8; margin-top:6px; }
+const SUPABASE_URL = 'https://qyrulqxbjoylohxgwywo.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5cnVscXhiam95bG9oeGd3eXdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0NzE4NDgsImV4cCI6MjEwNzA0Nzg0OH0.UFGFHyMN0yEen9hPvC0Xl9UqZCRrmcP5RIqpAA_my38';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    #accessDenied {
-      display:none;
-      position:fixed; inset:0;
-      background:linear-gradient(135deg, #0f0c29, #1b5e20);
-      color:#fff;
-      align-items:center; justify-content:center;
-      text-align:center;
-      padding:30px;
-      z-index:10000;
+/* ══════ DEVICE LOCK ══════ */
+const DEVICE_KEY_STORAGE = 'ssdf_device_lock_v2';
+const OWNER_DEVICE_KEY = 'SSDF-OWNER-2026-1629-AMMANANNA@143-PRIVATE';
+
+function getSimpleFingerprint() {
+  const parts = [
+    navigator.userAgent,
+    navigator.language,
+    screen.width + 'x' + screen.height,
+    new Date().getTimezoneOffset(),
+    navigator.platform || 'na'
+  ];
+  const raw = parts.join('|');
+  let hash = 0;
+  for (let i = 0; i < raw.length; i++) {
+    hash = ((hash << 5) - hash) + raw.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return Math.abs(hash).toString(16).padStart(16, '0');
+}
+
+async function getDeviceFingerprint() {
+  try {
+    const parts = [
+      navigator.userAgent,
+      navigator.language,
+      screen.width + 'x' + screen.height,
+      new Date().getTimezoneOffset(),
+      navigator.platform || 'na'
+    ];
+    const raw = parts.join('|');
+    if (window.crypto && crypto.subtle && crypto.subtle.digest) {
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+      return [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0')).join('').slice(0, 24);
     }
-    #accessDenied.show { display:flex; }
-    #accessDenied h1 { font-size:80px; margin-bottom:20px; }
-    #accessDenied h2 { font-size:26px; margin-bottom:12px; }
-    #accessDenied p { opacity:0.7; line-height:1.6; }
+  } catch (e) {}
+  return getSimpleFingerprint();
+}
 
-    #loadingScreen {
-      position:fixed; inset:0;
-      background:linear-gradient(135deg, #1b5e20, #2e7d32);
-      display:flex; flex-direction:column;
-      align-items:center; justify-content:center;
-      color:#fff;
-      z-index:9999;
+async function bootAdmin() {
+  const loadingEl = document.getElementById('loadingScreen');
+  const deniedEl = document.getElementById('accessDenied');
+  const mainEl = document.getElementById('mainContent');
+
+  try {
+    const urlParams = new URLSearchParams(location.search);
+    const regKey = urlParams.get('register');
+
+    if (regKey === OWNER_DEVICE_KEY) {
+      const fp = await getDeviceFingerprint();
+      localStorage.setItem(DEVICE_KEY_STORAGE, fp);
+      history.replaceState({}, '', 'admin.html');
+      showPanel(fp, loadingEl, mainEl);
+      return;
     }
-    #loadingScreen .spinner {
-      width:60px; height:60px;
-      border:4px solid rgba(255,255,255,0.2);
-      border-top-color:#ffd54f;
-      border-radius:50%;
-      animation: spin 0.9s linear infinite;
-      margin-bottom:20px;
+
+    const saved = localStorage.getItem(DEVICE_KEY_STORAGE);
+    const current = await getDeviceFingerprint();
+
+    if (!saved) {
+      if (loadingEl) loadingEl.classList.add('hide');
+      if (deniedEl) deniedEl.classList.add('show');
+      return;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    #loadingScreen.hide { display:none; }
-  </style>
-</head>
-<body>
-  <div class="bg-animated"></div>
 
-  <div id="loadingScreen">
-    <div class="spinner"></div>
-    <p style="font-size:14px;opacity:0.85">Verifying device access...</p>
-  </div>
-
-  <div id="accessDenied">
-    <div>
-      <h1>🔒</h1>
-      <h2>Access Denied</h2>
-      <p>This admin panel is restricted to the owner's device.</p>
-      <p style="font-size:12px;opacity:0.5;margin-top:30px">🐄 Sri Srinivasa Dairy Farm</p>
-    </div>
-  </div>
-
-  <div id="mainContent" style="display:none">
-    <header class="fade-in" style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px">
-      <h1>⚙️ Admin — SSDF</h1>
-      <div>
-        <span style="font-size:11px;opacity:0.6;margin-right:8px" id="deviceLabel"></span>
-        <a href="index.html" class="btn-track">← Shop</a>
-      </div>
-    </header>
-
-    <main>
-      <div id="panel" class="glass">
-        <div class="tabs">
-          <div class="tab active" onclick="tab('orders',this)">📦 Orders</div>
-          <div class="tab" onclick="tab('delivery',this)">🚚 Delivery</div>
-          <div class="tab" onclick="tab('products',this)">🛒 Products</div>
-          <div class="tab" onclick="tab('coupons',this)">🎟️ Coupons</div>
-          <div class="tab" onclick="tab('analytics',this)">📊 Analytics</div>
-        </div>
-
-        <div id="orders">
-          <button class="submit-btn" onclick="loadOrders()" style="max-width:160px">🔄 Refresh</button>
-          <div style="overflow-x:auto"><table id="ordersTable"></table></div>
-        </div>
-
-        <div id="delivery" class="hidden">
-          <button class="submit-btn" onclick="loadDelivery()" style="max-width:180px">🔄 Refresh Today</button>
-          <div id="deliveryList" style="margin-top:16px"></div>
-        </div>
-
-        <div id="products" class="hidden">
-          <h3>Add Product</h3>
-          <input id="pName" placeholder="Name">
-          <input id="pPrice" type="number" placeholder="Price">
-          <input id="pStock" type="number" placeholder="Stock" value="100">
-          <button class="submit-btn" onclick="addProduct()" style="max-width:160px">+ Add</button>
-          <table id="productsTable"></table>
-        </div>
-
-        <div id="coupons" class="hidden">
-          <h3>Add Coupon</h3>
-          <input id="cCode" placeholder="CODE">
-          <select id="cType"><option value="percent">%</option><option value="flat">₹</option></select>
-          <input id="cValue" type="number" placeholder="Value">
-          <input id="cMin" type="number" placeholder="Min order" value="0">
-          <input id="cLimit" type="number" placeholder="Limit" value="100">
-          <button class="submit-btn" onclick="addCoupon()" style="max-width:160px">+ Add</button>
-          <table id="couponsTable"></table>
-        </div>
-
-        <div id="analytics" class="hidden">
-          <div class="stats" id="stats"></div>
-          <div class="chart" id="chart"></div>
-        </div>
-      </div>
-    </main>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="admin.js"></script>
-  <script>
-    function tab(name, el) {
-      document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
-      el.classList.add('active');
-      ['orders','delivery','products','coupons','analytics'].forEach(t => document.getElementById(t).classList.add('hidden'));
-      document.getElementById(name).classList.remove('hidden');
-      if (name === 'orders') loadOrders();
-      if (name === 'delivery') loadDelivery();
-      if (name === 'products') loadProducts();
-      if (name === 'coupons') loadCoupons();
-      if (name === 'analytics') loadAnalytics();
+    if (saved !== current) {
+      if (loadingEl) loadingEl.classList.add('hide');
+      if (deniedEl) deniedEl.classList.add('show');
+      return;
     }
-  </script>
-</body>
-</html>
+
+    showPanel(current, loadingEl, mainEl);
+
+  } catch (err) {
+    console.error('Boot error:', err);
+    if (loadingEl) loadingEl.classList.add('hide');
+    if (deniedEl) deniedEl.classList.add('show');
+  }
+}
+
+function showPanel(fingerprint, loadingEl, mainEl) {
+  if (loadingEl) loadingEl.classList.add('hide');
+  if (mainEl) mainEl.style.display = 'block';
+
+  const label = document.getElementById('deviceLabel');
+  if (label) label.textContent = '✓ ' + fingerprint.slice(0, 8) + '...';
+
+  try { loadOrders(); } catch (e) {}
+  try {
+    const a = new Audio('buzzer.mp3');
+    a.volume = 0;
+    a.play().then(() => { a.pause(); }).catch(() => {});
+  } catch (e) {}
+  try { startOrderWatcher(); } catch (e) {}
+  try { addSoundTestButton(); } catch (e) {}
+  try { addResetButton(); } catch (e) {}
+}
+
+function initAdmin() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(bootAdmin, 100));
+  } else {
+    setTimeout(bootAdmin, 100);
+  }
+  setTimeout(() => {
+    const loadingEl = document.getElementById('loadingScreen');
+    if (loadingEl && !loadingEl.classList.contains('hide')) bootAdmin();
+  }, 6000);
+}
+
+window.addEventListener('load', initAdmin);
+
+/* ══════ BUZZER ══════ */
+const CUSTOM_BUZZER = 'buzzer.mp3';
+const FALLBACK_BUZZER = 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3?filename=error-126627.mp3';
+let lastOrderCount = 0;
+let watcherInterval = null;
+
+function playBuzzerOnce(volume = 1.0) {
+  try {
+    const audio = new Audio(CUSTOM_BUZZER);
+    audio.volume = volume;
+    audio.play().catch(() => {
+      try {
+        const fb = new Audio(FALLBACK_BUZZER);
+        fb.volume = volume;
+        fb.play().catch(() => {});
+      } catch (e) {}
+    });
+  } catch (e) {}
+}
+
+function triggerBuzzer() {
+  playBuzzerOnce(1.0);
+  setTimeout(() => playBuzzerOnce(1.0), 900);
+  setTimeout(() => playBuzzerOnce(1.0), 1800);
+  if (navigator.vibrate) { try { navigator.vibrate([500, 200, 500, 200, 500]); } catch (e) {} }
+  showNewOrderBanner();
+}
+
+function showNewOrderBanner() {
+  const existing = document.getElementById('newOrderBanner');
+  if (existing) existing.remove();
+  const banner = document.createElement('div');
+  banner.id = 'newOrderBanner';
+  banner.style.cssText = `
+    position:fixed; top:0; left:0; right:0;
+    background:linear-gradient(135deg, #f5576c, #f093fb);
+    color:#fff; padding:20px;
+    text-align:center; font-weight:bold;
+    font-size:16px; z-index:99999;
+    box-shadow:0 4px 20px rgba(0,0,0,0.5);
+    cursor:pointer;
+  `;
+  banner.innerHTML = '🔔 NEW ORDER RECEIVED! Tap to view';
+  banner.onclick = () => { loadOrders(); banner.remove(); };
+  document.body.appendChild(banner);
+  setTimeout(() => { if (banner.parentNode) banner.remove(); }, 30000);
+}
+
+function startOrderWatcher() {
+  if (watcherInterval) clearInterval(watcherInterval);
+  (async () => {
+    try {
+      const { count } = await db.from('orders').select('*', { count: 'exact', head: true });
+      lastOrderCount = count || 0;
+    } catch (e) {}
+  })();
+  watcherInterval = setInterval(async () => {
+    try {
+      const { count } = await db.from('orders').select('*', { count: 'exact', head: true });
+      if (typeof count !== 'number') return;
+      if (count > lastOrderCount) { triggerBuzzer(); lastOrderCount = count; }
+    } catch (e) {}
+  }, 8000);
+}
+
+function addSoundTestButton() {
+  if (document.getElementById('testBuzzerBtn')) return;
+  const btn = document.createElement('button');
+  btn.id = 'testBuzzerBtn';
+  btn.textContent = '🔊 Test Buzzer';
+  btn.style.cssText = `
+    position:fixed; bottom:16px; right:16px;
+    padding:12px 18px;
+    background:linear-gradient(135deg, #2e7d32, #66bb6a);
+    color:#fff; border:none; border-radius:30px;
+    font-weight:bold; font-size:13px;
+    box-shadow:0 6px 20px rgba(0,0,0,0.4);
+    z-index:99998; cursor:pointer;
+  `;
+  btn.onclick = () => triggerBuzzer();
+  document.body.appendChild(btn);
+}
+
+function addResetButton() {
+  if (document.getElementById('resetDeviceBtn')) return;
+  const btn = document.createElement('button');
+  btn.id = 'resetDeviceBtn';
+  btn.textContent = '🔄 Reset';
+  btn.style.cssText = `
+    position:fixed; bottom:16px; left:16px;
+    padding:10px 14px;
+    background:rgba(245,87,108,0.8);
+    color:#fff; border:none; border-radius:30px;
+    font-weight:bold; font-size:12px;
+    box-shadow:0 6px 20px rgba(0,0,0,0.4);
+    z-index:99998; cursor:pointer;
+  `;
+  btn.onclick = () => {
+    if (confirm('Reset device lock?')) {
+      localStorage.removeItem(DEVICE_KEY_STORAGE);
+      location.href = 'admin.html';
+    }
+  };
+  document.body.appendChild(btn);
+}
+
+/* ══════ ORDERS ══════ */
+async function loadOrders() {
+  const { data } = await db.from('orders').select('*').order('created_at', { ascending: false });
+  const statuses = ['Pending', 'Confirmed', 'Shipped', 'Delivered', 'Cancelled'];
+  const el = document.getElementById('ordersTable');
+  if (!el) return;
+  el.innerHTML = `
+    <tr><th>Order</th><th>Name</th><th>Total</th><th>UTR</th><th>Slot</th><th>Payment</th><th>Status</th><th>Actions</th></tr>
+    ${(data || []).map(o => `
+      <tr>
+        <td>${o.order_id}</td>
+        <td>${o.name}<br><small>${o.phone}</small></td>
+        <td>₹${o.total}</td>
+        <td>${o.utr || '-'}</td>
+        <td>${o.slot || '-'}</td>
+        <td>
+          <select onchange="updatePayment('${o.order_id}', this.value)">
+            ${['Unpaid','Awaiting Verification','Paid','Failed'].map(s =>
+              `<option ${o.payment_status === s ? 'selected' : ''}>${s}</option>`).join('')}
+          </select>
+        </td>
+        <td>
+          <select onchange="updateStatus('${o.order_id}', this.value)">
+            ${statuses.map(s =>
+              `<option ${o.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+          </select>
+        </td>
+        <td>
+          <button onclick="sendWhatsApp('${o.order_id}')" style="background:none;border:none;font-size:18px;cursor:pointer">📲</button>
+          <button onclick="sendEmail('${o.order_id}')" style="background:none;border:none;font-size:18px;cursor:pointer">✉️</button>
+          <button onclick="deleteOrder('${o.order_id}')" style="background:none;border:none;font-size:18px;cursor:pointer">🗑️</button>
+        </td>
+      </tr>`).join('')}`;
+}
+
+async function updateStatus(id, status) { await db.from('orders').update({ status }).eq('order_id', id); }
+async function updatePayment(id, payment_status) { await db.from('orders').update({ payment_status }).eq('order_id', id); }
+
+/* ══════ DELETE SINGLE ORDER ══════ */
+async function deleteOrder(orderId) {
+  const confirm1 = confirm(`Delete order ${orderId}?\n\nThis cannot be undone.`);
+  if (!confirm1) return;
+  const confirm2 = confirm('Are you ABSOLUTELY sure? This removes it permanently.');
+  if (!confirm2) return;
+
+  try {
+    const { error } = await db.from('orders').delete().eq('order_id', orderId);
+    if (error) { alert('Failed to delete: ' + error.message); return; }
+
+    if (navigator.vibrate) { try { navigator.vibrate(200); } catch (e) {} }
+
+    const buttons = document.querySelectorAll(`button[onclick*="${orderId}"]`);
+    buttons.forEach(btn => {
+      const row = btn.closest('tr');
+      if (row) {
+        row.style.transition = 'all 0.4s';
+        row.style.opacity = '0';
+        row.style.transform = 'translateX(-100%)';
+        setTimeout(() => row.remove(), 400);
+      }
+    });
+
+    const note = document.createElement('div');
+    note.textContent = '✅ Order deleted';
+    note.style.cssText = `
+      position:fixed; bottom:100px; left:50%; transform:translateX(-50%);
+      background:linear-gradient(135deg, #2e7d32, #66bb6a);
+      color:#fff; padding:12px 24px; border-radius:30px;
+      font-weight:bold; font-size:14px; z-index:99999;
+      box-shadow:0 6px 20px rgba(0,0,0,0.4);
+    `;
+    document.body.appendChild(note);
+    setTimeout(() => note.remove(), 2000);
+
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
+/* ══════ BULK DELETE OLD ORDERS ══════ */
+async function deleteOldOrders() {
+  const days = prompt('Delete orders older than how many days?\n\nExample: 90 (deletes orders older than 90 days)', '90');
+  if (!days) return;
+
+  const numDays = Number(days);
+  if (!numDays || numDays < 1) { alert('Enter a valid number'); return; }
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - numDays);
+
+  const confirmMsg = confirm(
+    `Delete ALL orders older than ${numDays} days?\n\n` +
+    `Cutoff date: ${cutoff.toLocaleDateString()}\n\n` +
+    `This cannot be undone!`
+  );
+  if (!confirmMsg) return;
+
+  const confirm2 = confirm('Are you ABSOLUTELY sure? This will delete ALL those orders permanently.');
+  if (!confirm2) return;
+
+  try {
+    const { error } = await db
+      .from('orders')
+      .delete()
+      .lt('created_at', cutoff.toISOString());
+
+    if (error) { alert('Failed: ' + error.message); return; }
+    alert(`✅ Deleted all orders older than ${numDays} days.`);
+    loadOrders();
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
+/* ══════ WHATSAPP + EMAIL ══════ */
+async function sendWhatsApp(orderId) {
+  const { data } = await db.from('orders').select('*').eq('order_id', orderId).single();
+  if (!data) return;
+  const msg = `🐄 Sri Srinivasa Dairy Farm
+
+Order: ${data.order_id}
+Name: ${data.name}
+Slot: ${data.slot || '-'}
+Status: ${data.status}
+Payment: ${data.payment_status}
+Total: ₹${data.total}
+
+Thank you!`;
+  const phone = String(data.phone).replace(/\D/g, '');
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+async function sendEmail(orderId) {
+  const { data } = await db.from('orders').select('*').eq('order_id', orderId).single();
+  if (!data || !data.email) return;
+  const subject = `Order ${data.order_id} — ${data.status}`;
+  const body = `Hi ${data.name},
+
+Your order ${data.order_id} is now: ${data.status}
+Slot: ${data.slot || '-'}
+Payment: ${data.payment_status}
+Total: ₹${data.total}
+
+Sri Srinivasa Dairy Farm`;
+  window.location.href = `mailto:${data.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+/* ══════ DELIVERY ══════ */
+async function loadDelivery() {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data } = await db.from('orders').select('*')
+    .gte('created_at', today + 'T00:00:00')
+    .order('created_at', { ascending: false });
+  const morning = (data || []).filter(o => (o.slot || '').includes('Morning'));
+  const evening = (data || []).filter(o => (o.slot || '').includes('Evening'));
+  const other = (data || []).filter(o => !(o.slot || '').includes('Morning') && !(o.slot || '').includes('Evening'));
+  const renderGroup = (title, list) => {
+    if (!list.length) return '';
+    return `
+      <div class="slot-header">${title} — ${list.length} orders</div>
+      ${list.map(o => `
+        <div class="delivery-card">
+          <div class="row"><b>${o.name}</b> <span>₹${o.total}</span></div>
+          <div class="row"><span>📞 ${o.phone}</span></div>
+          <div class="row"><span>📍 ${o.address}</span></div>
+          <div class="items">🛒 ${(o.items || []).map(i => i.name).join(', ')}</div>
+        </div>`).join('')}`;
+  };
+  const el = document.getElementById('deliveryList');
+  if (!el) return;
+  el.innerHTML = (morning.length || evening.length || other.length)
+    ? renderGroup('🌅 Morning', morning) + renderGroup('🌆 Evening', evening) + renderGroup('🕐 Other', other)
+    : '<p style="text-align:center;opacity:0.6;padding:40px">No orders today.</p>';
+}
+
+/* ══════ PRODUCTS ══════ */
+async function loadProducts() {
+  const { data } = await db.from('products').select('*').order('id');
+  const el = document.getElementById('productsTable');
+  if (!el) return;
+  el.innerHTML = `
+    <tr><th>Image</th><th>Name</th><th>Price</th><th>Stock</th><th>Active</th><th>Upload</th><th></th></tr>
+    ${(data || []).map(p => `
+      <tr>
+        <td>${p.image_url ? `<img src="${p.image_url}" style="width:40px;height:40px;object-fit:cover;border-radius:6px">` : '—'}</td>
+        <td><input value="${p.name}" onchange="updateProduct(${p.id},'name',this.value)"></td>
+        <td><input type="number" value="${p.price}" onchange="updateProduct(${p.id},'price',Number(this.value))"></td>
+        <td><input type="number" value="${p.stock}" onchange="updateProduct(${p.id},'stock',Number(this.value))"></td>
+        <td><input type="checkbox" ${p.active ? 'checked' : ''} onchange="updateProduct(${p.id},'active',this.checked)"></td>
+        <td><input type="file" accept="image/*" onchange="uploadImage(${p.id}, this.files[0])"></td>
+        <td><button onclick="deleteProduct(${p.id})" style="background:none;border:none;cursor:pointer">🗑️</button></td>
+      </tr>`).join('')}`;
+}
+
+async function addProduct() {
+  const name = document.getElementById('pName').value;
+  const price = Number(document.getElementById('pPrice').value);
+  const stock = Number(document.getElementById('pStock').value) || 100;
+  if (!name || !price) return alert('Fill name & price');
+  await db.from('products').insert([{ name, price, stock, active: true }]);
+  loadProducts();
+}
+
+async function updateProduct(id, field, value) { await db.from('products').update({ [field]: value }).eq('id', id); }
+async function deleteProduct(id) {
+  if (confirm('Delete?')) { await db.from('products').delete().eq('id', id); loadProducts(); }
+}
+
+/* ══════ COUPONS ══════ */
+async function loadCoupons() {
+  const { data } = await db.from('coupons').select('*').order('id', { ascending: false });
+  const el = document.getElementById('couponsTable');
+  if (!el) return;
+  el.innerHTML = `
+    <tr><th>Code</th><th>Type</th><th>Value</th><th>Min</th><th>Used</th><th>Active</th><th></th></tr>
+    ${(data || []).map(c => `
+      <tr>
+        <td>${c.code}</td>
+        <td>${c.type}</td>
+        <td>${c.value}</td>
+        <td>₹${c.min_order}</td>
+        <td>${c.used_count}/${c.usage_limit}</td>
+        <td><input type="checkbox" ${c.active ? 'checked' : ''} onchange="toggleCoupon(${c.id}, this.checked)"></td>
+        <td><button onclick="deleteCoupon(${c.id})" style="background:none;border:none;cursor:pointer">🗑️</button></td>
+      </tr>`).join('')}`;
+}
+
+async function addCoupon() {
+  const code = document.getElementById('cCode').value.trim().toUpperCase();
+  const type = document.getElementById('cType').value;
+  const value = Number(document.getElementById('cValue').value);
+  const min_order = Number(document.getElementById('cMin').value) || 0;
+  const usage_limit = Number(document.getElementById('cLimit').value) || 100;
+  if (!code || !value) return alert('Fill code & value');
+  const { error } = await db.from('coupons').insert([{ code, type, value, min_order, usage_limit }]);
+  if (error) return alert(error.message);
+  loadCoupons();
+}
+
+async function toggleCoupon(id, active) { await db.from('coupons').update({ active }).eq('id', id); }
+async function deleteCoupon(id) {
+  if (confirm('Delete coupon?')) { await db.from('coupons').delete().eq('id', id); loadCoupons(); }
+}
+
+/* ══════ ANALYTICS ══════ */
+async function loadAnalytics() {
+  const { data } = await db.from('orders').select('*');
+  const orders = data || [];
+  const el = document.getElementById('stats');
+  const chartEl = document.getElementById('chart');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="stat"><h3>${orders.length}</h3><p>Orders</p></div>
+    <div class="stat"><h3>₹${orders.filter(o => o.payment_status === 'Paid').reduce((s, o) => s + Number(o.total || 0), 0)}</h3><p>Revenue</p></div>
+    <div class="stat"><h3>${orders.filter(o => o.status === 'Pending').length}</h3><p>Pending</p></div>`;
+  const days = [...Array(7)].map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    const key = d.toISOString().slice(0, 10);
+    const count = orders.filter(o => (o.created_at || '').slice(0, 10) === key).length;
+    return { label: d.toLocaleDateString('en', { weekday: 'short' }), count };
+  });
+  const max = Math.max(...days.map(d => d.count), 1);
+  if (chartEl) chartEl.innerHTML = days.map(d => `
+    <div class="bar-wrap">
+      <div class="bar" style="height:${(d.count / max) * 100}%"></div>
+      <span>${d.label}</span>
+    </div>`).join('');
+}
+
+/* ══════ IMAGE UPLOAD ══════ */
+async function uploadImage(id, file) {
+  if (!file) return;
+  const path = `products/${id}_${Date.now()}_${file.name}`;
+  const { error } = await db.storage.from('product-images').upload(path, file);
+  if (error) return alert(error.message);
+  const { data: { publicUrl } } = db.storage.from('product-images').getPublicUrl(path);
+  await db.from('products').update({ image_url: publicUrl }).eq('id', id);
+  loadProducts();
+}
