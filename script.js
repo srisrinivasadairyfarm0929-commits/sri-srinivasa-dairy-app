@@ -1,5 +1,5 @@
 const SUPABASE_URL = 'https://qyrulqxbjoylohxgwywo.supabase.co';
-const SUPABASE_KEY = 'PASTE_YOUR_ANON_KEY_HERE';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5cnVscXhiam95bG9oeGd3eXdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0NzE4NDgsImV4cCI6MjEwNzA0Nzg0OH0.UFGFHyMN0yEen9hPvC0Xl9UqZCRrmcP5RIqpAA_my38';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let cart = [], upiId = '', step = 1;
@@ -14,7 +14,6 @@ const sounds = {
 };
 const play = n => { try { sounds[n].currentTime = 0; sounds[n].play().catch(()=>{}); } catch(e){} };
 
-/* Global click sound */
 document.addEventListener('click', (e) => {
   if (e.target.closest('button, a, .qty-pill, .quick-btn, input[type=radio]')) {
     try {
@@ -26,29 +25,89 @@ document.addEventListener('click', (e) => {
 }, true);
 
 function playNatureSound() {
-  natureAudio = new Audio('https://actions.google.com/sounds/v1/ambiences/forest_bird_chirps.ogg');
-  natureAudio.loop = true;
-  natureAudio.volume = 0.35;
-  natureAudio.play().catch(() => {
-    document.addEventListener('touchstart', () => {
-      if (natureAudio && natureAudio.paused) natureAudio.play().catch(()=>{});
-    }, { once: true });
-  });
-  setTimeout(() => {
-    if (!natureAudio) return;
-    let vol = natureAudio.volume;
-    const fade = setInterval(() => {
-      vol -= 0.02;
-      if (vol <= 0) { natureAudio.pause(); clearInterval(fade); }
-      else natureAudio.volume = vol;
-    }, 200);
-  }, 20000);
+  try {
+    natureAudio = new Audio('https://actions.google.com/sounds/v1/ambiences/forest_bird_chirps.ogg');
+    natureAudio.loop = true;
+    natureAudio.volume = 0.35;
+    natureAudio.play().catch(() => {
+      document.addEventListener('touchstart', () => {
+        if (natureAudio && natureAudio.paused) natureAudio.play().catch(()=>{});
+      }, { once: true });
+    });
+  } catch (e) {}
 }
 
+/* ══════ LOAD PRODUCTS ══════ */
+async function loadProducts() {
+  const itemsEl = document.getElementById('items');
+  if (!itemsEl) return;
+
+  console.log('Loading products...');
+
+  try {
+    const { data: products, error } = await db.from('products').select('*').eq('active', true);
+
+    if (error) {
+      console.error('Supabase error:', error);
+      itemsEl.innerHTML = '<p style="color:#f5576c;padding:16px">Error loading products: ' + error.message + '</p>';
+      return;
+    }
+
+    console.log('Products loaded:', products);
+
+    if (!products || !products.length) {
+      itemsEl.innerHTML = '<p style="opacity:0.6;padding:16px;text-align:center">No products available yet.</p>';
+      return;
+    }
+
+    const quantities = [
+      { label: '0.5L', mult: 0.5 },
+      { label: '1L', mult: 1 },
+      { label: '2L', mult: 2 },
+      { label: '5L', mult: 5 },
+      { label: '10L', mult: 10 }
+    ];
+
+    itemsEl.innerHTML = products.map((p, idx) => `
+      <div class="item" data-id="${p.id}" data-name="${p.name}" data-price="${p.price}" style="animation-delay:${idx*0.1}s">
+        <div class="item-top">
+          <div>
+            <div class="item-name">🐄 ${p.name}</div>
+            <div class="item-stock">Base: ₹${p.price}/L</div>
+          </div>
+          <div class="item-price">₹${p.price}/L</div>
+        </div>
+        <div class="qty-row" data-product="${p.id}">
+          ${quantities.map(q => `
+            <button type="button" class="qty-pill" data-qty="${q.mult}" data-label="${q.label}" onclick="selectQty(this, ${p.id}, ${p.price}, '${p.name}')">${q.label}</button>
+          `).join('')}
+        </div>
+        <div class="custom-qty-row">
+          <input type="number" step="0.25" min="0.25" placeholder="Custom qty in L" id="custom_${p.id}">
+          <button type="button" class="custom-qty-btn" onclick="applyCustom(${p.id}, ${p.price}, '${p.name}')">Add</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    console.error('Load products failed:', e);
+    itemsEl.innerHTML = '<p style="color:#f5576c;padding:16px">Failed to load products</p>';
+  }
+}
+
+/* ══════ LOAD SETTINGS ══════ */
+async function loadSettings() {
+  try {
+    const { data: s } = await db.from('settings').select('*');
+    if (s) s.forEach(x => { if (x.key === 'upi_id') upiId = x.value; });
+    const upiEl = document.getElementById('upiId');
+    if (upiEl) upiEl.textContent = upiId;
+  } catch (e) { console.warn('Settings load failed:', e); }
+}
+
+/* ══════ BOOT ══════ */
 window.addEventListener('load', () => {
   playNatureSound();
 
-  // Phone input — digits only
   const phoneInput = document.getElementById('phone');
   if (phoneInput) {
     phoneInput.addEventListener('input', (e) => {
@@ -56,7 +115,6 @@ window.addEventListener('load', () => {
     });
   }
 
-  // Prefill address if previously saved
   const savedAddress = localStorage.getItem('lastAddress');
   const addr = document.getElementById('address');
   if (addr && savedAddress && !addr.value) addr.value = savedAddress;
@@ -67,6 +125,10 @@ window.addEventListener('load', () => {
     if (splash) { splash.classList.add('hide'); setTimeout(() => splash.remove(), 700); }
     if (main) main.classList.remove('hidden');
   }, 3000);
+
+  // Load data
+  loadSettings();
+  loadProducts();
 });
 
 /* ══════ DRAWER ══════ */
@@ -82,43 +144,6 @@ function openWhatsApp() {
   const msg = encodeURIComponent('Hi, I want to order milk from Sri Srinivasa Dairy Farm 🐄');
   window.open(`https://wa.me/919121188763?text=${msg}`, '_blank');
 }
-
-/* ══════ LOAD DATA ══════ */
-(async () => {
-  try {
-    const { data: s } = await db.from('settings').select('*');
-    if (s) s.forEach(x => { if (x.key === 'upi_id') upiId = x.value; });
-    const upiEl = document.getElementById('upiId');
-    if (upiEl) upiEl.textContent = upiId;
-
-    const { data: products } = await db.from('products').select('*').eq('active', true);
-    const quantities = [
-      { label: '0.5L', mult: 0.5 },
-      { label: '1L', mult: 1 },
-      { label: '2L', mult: 2 },
-      { label: '5L', mult: 5 },
-      { label: '10L', mult: 10 }
-    ];
-    const itemsEl = document.getElementById('items');
-    if (itemsEl && products) {
-      itemsEl.innerHTML = products.map((p, idx) => `
-        <div class="item" data-id="${p.id}" data-name="${p.name}" data-price="${p.price}" style="animation-delay:${idx*0.1}s">
-          <div class="item-top">
-            <div><div class="item-name">🐄 ${p.name}</div><div class="item-stock">Base: ₹${p.price}/L</div></div>
-            <div class="item-price">₹${p.price}/L</div>
-          </div>
-          <div class="qty-row" data-product="${p.id}">
-            ${quantities.map(q => `<button type="button" class="qty-pill" data-qty="${q.mult}" data-label="${q.label}" onclick="selectQty(this, ${p.id}, ${p.price}, '${p.name}')">${q.label}</button>`).join('')}
-          </div>
-          <div class="custom-qty-row">
-            <input type="number" step="0.25" min="0.25" placeholder="Custom qty in L (e.g. 1.5)" id="custom_${p.id}">
-            <button type="button" class="custom-qty-btn" onclick="applyCustom(${p.id}, ${p.price}, '${p.name}')">Add</button>
-          </div>
-        </div>
-      `).join('');
-    }
-  } catch (e) { console.warn('Data load error:', e); }
-})();
 
 /* ══════ QUANTITY ══════ */
 function selectQty(btn, productId, basePrice, name) {
@@ -199,7 +224,7 @@ async function applyCoupon() {
 /* ══════ REPEAT ══════ */
 function repeatLastOrder() {
   const last = localStorage.getItem('lastOrder');
-  if (!last) { play('error'); alert('No previous order found. Place an order first.'); return; }
+  if (!last) { play('error'); alert('No previous order found.'); return; }
   const prev = JSON.parse(last);
   cart = prev.items || [];
   renderCart();
@@ -261,7 +286,7 @@ function closeBill() {
   document.getElementById('billModal').classList.add('hidden');
 }
 
-/* ══════ SUCCESS POPUP + 2 MIN COUNTDOWN ══════ */
+/* ══════ SUCCESS POPUP ══════ */
 function openSuccessPopup() {
   document.getElementById('successPopup').classList.remove('hidden');
   let remaining = 120;
@@ -272,10 +297,7 @@ function openSuccessPopup() {
     remaining--;
     const el = document.getElementById('countdown');
     if (el) el.textContent = remaining;
-    if (remaining <= 0) {
-      clearInterval(countdownInterval);
-      closePopup();
-    }
+    if (remaining <= 0) { clearInterval(countdownInterval); closePopup(); }
   }, 1000);
 }
 
@@ -287,15 +309,13 @@ function closePopup() {
   countdownInterval = null;
 }
 
-/* ══════ GET MY LOCATION ══════ */
+/* ══════ LOCATION ══════ */
 async function getMyLocation() {
   const btn = document.querySelector('.locate-btn');
   const addressField = document.getElementById('address');
 
   if (!navigator.geolocation) {
-    play('error');
-    alert('Your browser does not support location. Please enter address manually.');
-    return;
+    play('error'); alert('Location not supported. Enter address manually.'); return;
   }
 
   btn.classList.add('loading');
@@ -306,76 +326,36 @@ async function getMyLocation() {
     async (position) => {
       const lat = position.coords.latitude;
       const lon = position.coords.longitude;
-
       try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`,
-          { headers: { 'Accept-Language': 'en' } }
-        );
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`, { headers: { 'Accept-Language': 'en' } });
         const data = await res.json();
-
         if (data && data.address) {
           const a = data.address;
-          const parts = [
-            a.house_number,
-            a.road,
-            a.neighbourhood || a.suburb || a.village,
-            a.city || a.town || a.county,
-            a.state,
-            a.postcode
-          ].filter(Boolean);
+          const parts = [a.house_number, a.road, a.neighbourhood || a.suburb || a.village, a.city || a.town || a.county, a.state, a.postcode].filter(Boolean);
           const fullAddress = parts.join(', ');
-
           addressField.value = fullAddress || data.display_name;
-
-          btn.classList.remove('loading');
-          btn.classList.add('success');
+          btn.classList.remove('loading'); btn.classList.add('success');
           btn.innerHTML = '✅ Location added';
-
           play('success');
-
-          localStorage.setItem('lastLocation', JSON.stringify({ lat, lon, address: fullAddress }));
           localStorage.setItem('lastAddress', fullAddress);
-
           showMapPreview(lat, lon);
-
-          setTimeout(() => {
-            btn.classList.remove('success');
-            btn.innerHTML = '📍 Use My Location';
-          }, 3000);
-        } else {
-          throw new Error('No address found');
-        }
+          setTimeout(() => { btn.classList.remove('success'); btn.innerHTML = '📍 Use My Location'; }, 3000);
+        } else { throw new Error('No address'); }
       } catch (err) {
-        console.error('Reverse geocoding failed:', err);
         addressField.value = `Location: ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-        btn.classList.remove('loading');
-        btn.classList.add('success');
+        btn.classList.remove('loading'); btn.classList.add('success');
         btn.innerHTML = '✅ Coordinates added';
-        setTimeout(() => {
-          btn.classList.remove('success');
-          btn.innerHTML = '📍 Use My Location';
-        }, 3000);
+        setTimeout(() => { btn.classList.remove('success'); btn.innerHTML = '📍 Use My Location'; }, 3000);
       }
     },
     (error) => {
-      console.warn('Location error:', error);
-      btn.classList.remove('loading');
-      btn.classList.add('error');
+      btn.classList.remove('loading'); btn.classList.add('error');
       btn.innerHTML = '❌ Location blocked';
       play('error');
-
-      let msg = 'Could not get your location.';
-      if (error.code === 1) msg = 'Location permission denied. Please allow location in Chrome settings.';
-      else if (error.code === 2) msg = 'Location unavailable. Try again or enter manually.';
-      else if (error.code === 3) msg = 'Location request timed out.';
-
+      let msg = 'Could not get location.';
+      if (error.code === 1) msg = 'Permission denied. Allow location in Chrome settings.';
       alert(msg);
-
-      setTimeout(() => {
-        btn.classList.remove('error');
-        btn.innerHTML = '📍 Use My Location';
-      }, 3000);
+      setTimeout(() => { btn.classList.remove('error'); btn.innerHTML = '📍 Use My Location'; }, 3000);
     },
     { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
   );
@@ -388,7 +368,6 @@ function showMapPreview(lat, lon) {
     mapEl.id = 'mapPreview';
     mapEl.setAttribute('frameborder', '0');
     mapEl.setAttribute('scrolling', 'no');
-    mapEl.setAttribute('loading', 'lazy');
     const addrWrap = document.querySelector('.address-input');
     if (addrWrap) addrWrap.appendChild(mapEl);
   }
@@ -403,10 +382,9 @@ document.getElementById('orderForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!cart.length) { play('error'); alert('Select at least one product'); return; }
 
-  // Build +91 phone
   let rawPhone = document.getElementById('phone').value.trim().replace(/\D/g, '');
   if (rawPhone.length > 10) rawPhone = rawPhone.slice(-10);
-  if (rawPhone.length !== 10) { play('error'); alert('Please enter a valid 10-digit mobile number'); return; }
+  if (rawPhone.length !== 10) { play('error'); alert('Enter valid 10-digit mobile number'); return; }
   const phoneWithCode = '+91' + rawPhone;
 
   const sub = cart.reduce((s, c) => s + c.price, 0);
@@ -465,8 +443,7 @@ document.getElementById('orderForm').addEventListener('submit', async (e) => {
   openSuccessPopup();
 
   cart = []; discount = 0; appliedCoupon = null;
-  renderCart();
-  step = 1;
+  renderCart(); step = 1;
   document.querySelectorAll('.qty-pill').forEach(b => b.classList.remove('active'));
   document.getElementById('paymentSection').classList.add('hidden');
   document.getElementById('submitBtn').textContent = 'Continue 💳';
